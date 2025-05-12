@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import multer from "multer";
 import * as dotenv from "dotenv";
 import { getFiles, uploadVideo } from "./services/video.service";
+import * as functions from "firebase-functions";
 
 const cors = require("cors");
 
@@ -53,6 +54,7 @@ app.get("/listen/stations/:quantity", async (req, res) => {
   }
 });
 
+export const api = functions.https.onRequest(app);
 // Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
