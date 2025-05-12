@@ -17,7 +17,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: "18"
 
       - name: Write Firebase service account key
         run: |
@@ -28,3 +28,8 @@ jobs:
 
       - name: Compile TypeScript
         run: npx tsc
+
+      - name: Start application
+        run: node dist/server.js # 👈 point to your compiled output
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/serviceAccountKey.json
