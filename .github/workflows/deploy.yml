@@ -1,11 +1,10 @@
-# .github/workflows/deploy.yml
 name: Firebase Deploy
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:  # Enables manual trigger from GitHub Actions tab
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -24,9 +23,8 @@ jobs:
         run: |
           echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > serviceAccountKey.json
 
-      - name: Install dependencies and run your script
-        run: |
-          npm install
-          node your-script.js
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/serviceAccountKey.json
+      - name: Install dependencies
+        run: npm install
+
+      - name: Compile TypeScript
+        run: npx tsc
