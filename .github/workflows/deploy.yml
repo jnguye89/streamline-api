@@ -24,12 +24,12 @@ jobs:
           echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > serviceAccountKey.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci # Faster and consistent than npm install
 
       - name: Compile TypeScript
-        run: npx tsc
+        run: npm run build
 
-      - name: Start application
-        run: node dist/server.js # 👈 point to your compiled output
+      - name: Start app from compiled JS
+        run: node dist/server.js
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/serviceAccountKey.json
