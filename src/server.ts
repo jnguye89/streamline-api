@@ -2,16 +2,14 @@ import express, { Request, Response } from "express";
 import multer from "multer";
 import * as dotenv from "dotenv";
 import { getFiles, uploadVideo } from "./services/video.service";
-import * as functions from "firebase-functions";
-
-const cors = require("cors");
+import { getRandomStations } from "./services/radio.service";
+import cors from "cors";
+dotenv.config();
 
 const app = express();
-const admin = require("firebase-admin");
 
-const radioService = require("./radio.service");
+// const radioService = require("./radio.service");
 
-dotenv.config();
 // Initialize Firebase Admin SDK
 app.use(cors());
 app.use(express.json());
@@ -46,7 +44,7 @@ app.get("/videos", async (req, res) => {
 
 app.get("/listen/stations/:quantity", async (req, res) => {
   try {
-    const stations = await radioService.getRandomStations(+req.params.quantity);
+    const stations = await getRandomStations(+req.params.quantity);
     console.log(stations);
     res.json(stations);
   } catch {
@@ -54,7 +52,6 @@ app.get("/listen/stations/:quantity", async (req, res) => {
   }
 });
 
-export const api = functions.https.onRequest(app);
 // Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
