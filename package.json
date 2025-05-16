@@ -6,6 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
+    "prebuild": "rm -rf dist",
     "build": "nest build",
     "start:prod": "npm run build && node dist/main",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
