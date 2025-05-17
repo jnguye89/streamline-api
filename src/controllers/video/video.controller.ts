@@ -18,7 +18,7 @@ export class VideoController {
   }
 
   @Post()
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('video'))
   async createVideo(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new Error('No file provided.');
