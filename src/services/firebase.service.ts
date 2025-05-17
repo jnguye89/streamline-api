@@ -11,6 +11,7 @@ export class FirebaseService implements OnModuleInit {
 
   onModuleInit() {
     const saJson = process.env.FIREBASE_SA_B64;
+    console.log(saJson);
     // console.log('json', saJson);
     admin.initializeApp({
       credential: admin.credential.cert(JSON.parse(saJson!)),
