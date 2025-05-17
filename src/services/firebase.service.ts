@@ -10,11 +10,10 @@ export class FirebaseService implements OnModuleInit {
   constructor(private readonly config: ConfigService) {}
 
   onModuleInit() {
-    const saJson = process.env.FIREBASE_SA_B64;
-    console.log(saJson);
-    // console.log('json', saJson);
+    const saJson: string = this.config.get<string>('FIREBASE_SA_B64') || '';
+    const json = JSON.parse(saJson) as { FIREBASE_SA_B64: string };
     admin.initializeApp({
-      credential: admin.credential.cert(JSON.parse(saJson!)),
+      credential: admin.credential.cert(JSON.parse(json.FIREBASE_SA_B64)),
       storageBucket: this.config.get<string>('FIREBASE_STORAGE_BUCKET'),
     });
 
