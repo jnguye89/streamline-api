@@ -7,9 +7,15 @@ import { FirebaseModule } from './modules/firebase.module';
 import { HttpModule } from '@nestjs/axios';
 import { ListenController } from './controllers/listen/listen.controller';
 import { ListenService } from './services/listen.service';
+import { MulterModule } from '@nestjs/platform-express';
 
 @Module({
   imports: [
+    MulterModule.register({
+      limits: {
+        fileSize: 100 * 1024 * 1024, // 100MB
+      },
+    }),
     ConfigModule.forRoot({ cache: true, isGlobal: true }),
     FirebaseModule,
     HttpModule.registerAsync({

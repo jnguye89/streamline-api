@@ -17,15 +17,10 @@ export class VideoController {
     return await this.videoService.getAllVideos();
   }
 
-  @UseInterceptors(
-    FileInterceptor('video', {
-      limits: {
-        fileSize: 100 * 1024 * 1024, // 100MB
-      },
-    }),
-  )
   @Post()
+  @UseInterceptors(FileInterceptor('video'))
   async createVideo(@UploadedFile() file: Express.Multer.File) {
+    console.log("you're in the controller: createVideo");
     if (!file) {
       throw new Error('No file provided.');
     }
