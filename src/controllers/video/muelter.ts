@@ -1,10 +1,13 @@
-import { Catch, ExceptionFilter } from '@nestjs/common';
+import { Catch, ExceptionFilter, ArgumentsHost } from '@nestjs/common';
 import { MulterError } from 'multer';
 
 @Catch(MulterError)
 export class MulterExceptionFilter implements ExceptionFilter {
-  catch(exception: MulterError) {
-    console.error('Multer error:', exception.code);
-    // returns LIMIT_FILE_SIZE if this is the issue
+  catch(exception: MulterError, host: ArgumentsHost) {
+    console.error('Caught Multer error:', exception.code);
+    const res = host.switchToHttp().getResponse();
+    res
+      .status(413)
+      .json({ message: 'Multer size limit hit', error: exception.code });
   }
 }

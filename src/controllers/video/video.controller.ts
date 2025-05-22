@@ -17,8 +17,8 @@ export class VideoController {
     return await this.videoService.getAllVideos();
   }
 
-  @Post()
   @UseInterceptors(FileInterceptor('video'))
+  @Post()
   async createVideo(@UploadedFile() file: Express.Multer.File) {
     console.log("you're in the controller: createVideo");
     if (!file) {
