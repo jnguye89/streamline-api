@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { VideoController } from './controllers/video/video.controller';
 import { ConfigModule } from '@nestjs/config';
-import { VideoService } from './services/video.service';
 import { FirebaseModule } from './modules/firebase.module';
 import { HttpModule } from '@nestjs/axios';
 import { ListenController } from './controllers/listen/listen.controller';
@@ -10,6 +9,7 @@ import { ListenService } from './services/listen.service';
 import { MulterModule } from '@nestjs/platform-express';
 import { multerConfig } from './multer.config';
 import { AuthModule } from './auth/auth.module';
+import { S3Service } from './services/s3.service';
 
 @Module({
   imports: [
@@ -25,6 +25,6 @@ import { AuthModule } from './auth/auth.module';
     AuthModule,
   ],
   controllers: [AppController, VideoController, ListenController],
-  providers: [VideoService, ListenService],
+  providers: [ListenService, S3Service],
 })
 export class AppModule {}

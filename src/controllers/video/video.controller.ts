@@ -4,28 +4,30 @@ import {
   Post,
   UseInterceptors,
   UploadedFile,
+  Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { VideoService } from './../../services/video.service';
 import { Public } from './../../auth/public.decorator';
+import { S3Service } from 'src/services/s3.service';
 
 @Controller('video')
 export class VideoController {
-  constructor(private videoService: VideoService) {}
+  constructor(private s3Service: S3Service) {}
 
   @Get()
-  // @Public()
-  async getAllVideos(): Promise<string[]> {
-    return await this.videoService.getAllVideos();
+  @Public()
+  // async getAllVideos(@Req() req): Promise<string[] | undefined> {
+  //   console.log(req.user);
+  async getAllVideos(): Promise<string[] | undefined> {
+    return await this.s3Service.getAllVideos();
   }
 
   @UseInterceptors(FileInterceptor('video'))
   @Post()
-  async createVideo(@UploadedFile() file: Express.Multer.File) {
-    console.log("you're in the controller: createVideo");
-    if (!file) {
+  async createVideo(@UploadedFile() video: Express.Multer.File) {
+    if (!video) {
       throw new Error('No file provided.');
     }
-    return await this.videoService.uploadVideo(file);
+    return await this.s3Service.uploadFile(video);
   }
 }
