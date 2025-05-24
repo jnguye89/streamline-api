@@ -6,13 +6,15 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { VideoService } from 'src/services/video.service';
+import { VideoService } from './../../services/video.service';
+import { Public } from './../../auth/public.decorator';
 
 @Controller('video')
 export class VideoController {
   constructor(private videoService: VideoService) {}
 
   @Get()
+  // @Public()
   async getAllVideos(): Promise<string[]> {
     return await this.videoService.getAllVideos();
   }

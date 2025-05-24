@@ -9,6 +9,7 @@ import { ListenController } from './controllers/listen/listen.controller';
 import { ListenService } from './services/listen.service';
 import { MulterModule } from '@nestjs/platform-express';
 import { multerConfig } from './multer.config';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { multerConfig } from './multer.config';
         maxRedirects: 5,
       }),
     }),
+    AuthModule,
   ],
   controllers: [AppController, VideoController, ListenController],
   providers: [VideoService, ListenService],
