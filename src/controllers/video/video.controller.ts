@@ -16,11 +16,11 @@ export class VideoController {
 
   @Get()
   @Public()
-  async getAllVideos(): Promise<string[]> {
+  async getAllVideos(): Promise<string[]>{
     return await this.videoService.getAllVideos();
   }
 
-  @UseInterceptors(FileInterceptor('video'))
+  @UseInterceptors(FileInterceptor('file'))
   @Post()
   async createVideo(@UploadedFile() file: Express.Multer.File, @User() user) {
     console.log(user);

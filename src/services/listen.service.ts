@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { FirebaseService } from './firebase.service';
 import { HttpService } from '@nestjs/axios';
 import { Observable } from 'rxjs';
 import { AxiosResponse } from 'axios';
@@ -7,10 +6,7 @@ import { RadioStation } from 'src/models/radio-stations.model';
 
 @Injectable()
 export class ListenService {
-  constructor(
-    private firebaseService: FirebaseService,
-    private readonly httpService: HttpService,
-  ) {}
+  constructor(private readonly httpService: HttpService) {}
 
   getRandomStations(
     quantity: number,
