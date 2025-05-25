@@ -8,6 +8,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Public } from './../../auth/public.decorator';
 import { VideoService } from 'src/services/video.service';
+import { User } from 'src/auth/user.decorator';
 
 @Controller('video')
 export class VideoController {
@@ -21,8 +22,8 @@ export class VideoController {
 
   @UseInterceptors(FileInterceptor('video'))
   @Post()
-  async createVideo(@UploadedFile() file: Express.Multer.File) {
-    console.log("you're in the controller: createVideo");
+  async createVideo(@UploadedFile() file: Express.Multer.File, @User() user) {
+    console.log(user);
     if (!file) {
       throw new Error('No file provided.');
     }
