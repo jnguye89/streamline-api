@@ -9,9 +9,12 @@ import { ListenController } from './controllers/listen/listen.controller';
 import { ListenService } from './services/listen.service';
 import { MulterModule } from '@nestjs/platform-express';
 import { multerConfig } from 'multer.config';
+import { PassportModule } from '@nestjs/passport';
+import { JwtStrategy } from './auth/jwt.strategy';
 
 @Module({
   imports: [
+    PassportModule,
     MulterModule.register(multerConfig),
     ConfigModule.forRoot({ cache: true, isGlobal: true }),
     FirebaseModule,
@@ -23,6 +26,6 @@ import { multerConfig } from 'multer.config';
     }),
   ],
   controllers: [AppController, VideoController, ListenController],
-  providers: [VideoService, ListenService],
+  providers: [VideoService, ListenService, JwtStrategy],
 })
 export class AppModule {}

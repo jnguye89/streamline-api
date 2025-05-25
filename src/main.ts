@@ -3,6 +3,8 @@ import { AppModule } from './app.module';
 // import * as bodyParser from 'body-parser';
 // import { MulterExceptionFilter } from './controllers/video/multer';
 import { AllExceptionsFilter } from './controllers/all-exceptions.filter';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { Reflector } from '@nestjs/core';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -11,6 +13,8 @@ async function bootstrap() {
   // app.useGlobalFilters(new MulterExceptionFilter());
   app.useGlobalFilters(new AllExceptionsFilter());
 
+  const reflector = app.get(Reflector);
+  app.useGlobalGuards(new JwtAuthGuard(reflector));
   app.enableCors({
     origin: process.env.CORS_ORIGIN || 'http://localhost:4200',
   });
