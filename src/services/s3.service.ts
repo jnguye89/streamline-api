@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import {
   S3Client,
   ListObjectsV2Command,
   PutObjectCommand,
+  GetObjectCommand,
 } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -23,12 +25,21 @@ export class S3Service {
       });
 
       const response = await this.s3.send(command);
-      return (
-        response.Contents?.filter((item) => item.Key !== `${prefix}/`).map(
-          (item) =>
-            `https://${this.bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${item.Key}`,
-        ) ?? []
+      const files = response.Contents?.filter(
+        (item) => item.Key !== `${prefix}/`,
       );
+
+      if (!files) return [];
+      const signedUrls = await Promise.all(
+        files.map((item) => {
+          const getCmd = new GetObjectCommand({
+            Bucket: this.bucket,
+            Key: item.Key!,
+          });
+          return getSignedUrl(this.s3, getCmd, { expiresIn: 3600 }); // 1 hour
+        }),
+      );
+      return signedUrls;
     } catch (error) {
       console.error('Error listing files from S3:', error);
       throw error;
