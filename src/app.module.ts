@@ -11,6 +11,7 @@ import { multerConfig } from './multer.config';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './auth/jwt.strategy';
 import { S3Service } from './services/s3.service';
+import { StreamGateway } from './services/stream.gateway';
 
 @Module({
   imports: [
@@ -25,6 +26,12 @@ import { S3Service } from './services/s3.service';
     }),
   ],
   controllers: [AppController, VideoController, ListenController],
-  providers: [VideoService, ListenService, JwtStrategy, S3Service],
+  providers: [
+    VideoService,
+    ListenService,
+    JwtStrategy,
+    S3Service,
+    StreamGateway,
+  ],
 })
 export class AppModule {}
