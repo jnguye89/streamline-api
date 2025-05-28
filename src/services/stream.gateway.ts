@@ -9,7 +9,12 @@ import { Logger } from '@nestjs/common';
 import { Socket } from 'socket.io';
 import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
 
-@WebSocketGateway({ cors: true })
+@WebSocketGateway({
+  cors: {
+    origin: process.env.CORS_ORIGIN || 'http://localhost:4200',
+    credentials: true,
+  },
+})
 export class StreamGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(StreamGateway.name);
   private ffmpegMap = new Map<string, ChildProcessWithoutNullStreams>();
