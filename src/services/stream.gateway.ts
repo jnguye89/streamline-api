@@ -52,9 +52,13 @@ export class StreamGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('stream-data')
   handleStream(client: Socket, payload: Buffer) {
-    const ffmpeg = this.ffmpegMap.get(client.id);
-    if (ffmpeg) {
-      ffmpeg.stdin.write(payload);
+    try {
+      const ffmpeg = this.ffmpegMap.get(client.id);
+      if (ffmpeg) {
+        ffmpeg.stdin.write(payload);
+      }
+    } catch (err) {
+      console.error('Stream error:', err);
     }
   }
 
