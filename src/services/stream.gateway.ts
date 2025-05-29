@@ -4,9 +4,10 @@ import {
   WebSocketGateway,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
 } from '@nestjs/websockets';
 import { Logger } from '@nestjs/common';
-import { Socket } from 'socket.io';
+import { Server, Socket } from 'socket.io';
 import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
 
 @WebSocketGateway({
@@ -15,9 +16,20 @@ import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
     credentials: true,
   },
 })
-export class StreamGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class StreamGateway
+  implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit
+{
   private readonly logger = new Logger(StreamGateway.name);
   private ffmpegMap = new Map<string, ChildProcessWithoutNullStreams>();
+
+  afterInit(server: Server) {
+    server.on('connection', (socket) => {
+      console.log('Socket.IO raw connected:', socket.id);
+      socket.on('disconnect', (reason) => {
+        console.log('Socket.IO raw disconnect:', reason);
+      });
+    });
+  }
 
   handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);
@@ -52,6 +64,7 @@ export class StreamGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('stream-data')
   handleStream(client: Socket, payload: Buffer) {
+    console.log(`Stream payload from ${client.id}:`, payload.length);
     try {
       const ffmpeg = this.ffmpegMap.get(client.id);
       if (ffmpeg) {
