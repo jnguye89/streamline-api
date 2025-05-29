@@ -33,6 +33,9 @@ export class StreamGateway
 
   handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);
+    if (this.ffmpegMap.has(client.id)) {
+      this.logger.warn(`FFmpeg already exists for ${client.id}, overwriting`);
+    }
 
     const ffmpeg = spawn('ffmpeg', [
       '-re',
@@ -67,7 +70,7 @@ export class StreamGateway
     console.log(`Stream payload from ${client.id}:`, payload.length);
     try {
       const ffmpeg = this.ffmpegMap.get(client.id);
-      if (ffmpeg) {
+      if (ffmpeg && ffmpeg.stdin.writable) {
         ffmpeg.stdin.write(payload);
       }
     } catch (err) {
