@@ -39,35 +39,14 @@ export class StreamGateway
     this.logger.log(`Client connected ${client.id}`);
 
     const ffmpeg = spawn('ffmpeg', [
-      /* INPUT ---------------------------------------------------- */
       '-loglevel',
-      'error', // quieter log
+      'error',
       '-f',
-      'webm', // we know the container type now
+      'webm',
       '-i',
-      'pipe:0', // read from stdin
-
-      /* TRANSCODE ------------------------------------------------ */
-      // Video: re-encode to H.264 baseline, tune for realtime
-      '-c:v',
-      'libx264',
-      '-profile:v',
-      'baseline',
-      '-preset',
-      'veryfast',
-      '-tune',
-      'zerolatency',
-      // Audio: re-encode Opus → AAC
-      '-c:a',
-      'aac',
-      '-ar',
-      '48000',
-      '-b:a',
-      '128k',
-
-      /* OUTPUT --------------------------------------------------- */
-      '-pix_fmt',
-      'yuv420p',
+      'pipe:0',
+      '-c',
+      'copy', // copy *both* streams, no CPU
       '-f',
       'flv',
       'rtmps://3b7d4b5b28f6.global-contribute.live-video.net:443/app/sk_us-west-2_o7Qj4w0Hymqs_v7RiHpdGHgb54zph1fjZAd0aDzRICb', // rtmps://…/app/<stream-key>
