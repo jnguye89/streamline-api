@@ -1,10 +1,13 @@
+# .platform/hooks/prebuild/01_ffmpeg.sh
 #!/bin/bash
 set -euxo pipefail
 
-cd /tmp
-curl -L -o ffmpeg.tar.xz \
-  https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amazonlinux2-x86_64-static.tar.xz
-tar -xf ffmpeg.tar.xz
+tmpdir=$(mktemp -d)
+cd "$tmpdir"
+
+curl -L -O https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+tar -xf ffmpeg-release-amd64-static.tar.xz
 cd ffmpeg-*-static
+
 install -m 0755 ffmpeg ffprobe /usr/local/bin/
-echo "Installed FFmpeg $(ffmpeg -version | head -1)"
+echo "Installed $(ffmpeg -version | head -1)"
