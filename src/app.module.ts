@@ -11,6 +11,7 @@ import { multerConfig } from './multer.config';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './auth/jwt.strategy';
 import { S3Service } from './services/s3.service';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { StreamGateway } from './services/stream.gateway';
 
 @Module({
@@ -24,6 +25,16 @@ import { StreamGateway } from './services/stream.gateway';
         maxRedirects: 5,
       }),
     }),
+    // TypeOrmModule.forRoot({
+    //   type: 'mysql',
+    //   host: process.env.DB_HOST,
+    //   port: parseInt(process.env.DB_PORT ?? '3306', 10),
+    //   username: process.env.DB_USERNAME,
+    //   password: process.env.DB_PASSWORD,
+    //   database: process.env.DB_NAME,
+    //   autoLoadEntities: true,
+    //   synchronize: true, // turn off in prod
+    // }),
   ],
   controllers: [AppController, VideoController, ListenController],
   providers: [
