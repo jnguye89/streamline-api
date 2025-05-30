@@ -11,7 +11,7 @@ import { multerConfig } from './multer.config';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './auth/jwt.strategy';
 import { S3Service } from './services/s3.service';
-import { TypeOrmModule } from '@nestjs/typeorm';
+// import { TypeOrmModule } from '@nestjs/typeorm';
 import { StreamGateway } from './services/stream.gateway';
 
 @Module({
