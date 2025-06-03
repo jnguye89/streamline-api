@@ -12,7 +12,6 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './auth/jwt.strategy';
 import { S3Service } from './services/s3.service';
 // import { TypeOrmModule } from '@nestjs/typeorm';
-import { StreamGateway } from './services/stream.gateway';
 
 @Module({
   imports: [
@@ -37,12 +36,6 @@ import { StreamGateway } from './services/stream.gateway';
     // }),
   ],
   controllers: [AppController, VideoController, ListenController],
-  providers: [
-    VideoService,
-    ListenService,
-    JwtStrategy,
-    S3Service,
-    StreamGateway,
-  ],
+  providers: [VideoService, ListenService, JwtStrategy, S3Service],
 })
 export class AppModule {}
