@@ -7,7 +7,7 @@ import { ListenService } from 'src/services/listen.service';
 export class ListenController {
   constructor(private listenService: ListenService) {}
 
-  @Get('random/:quantity')
+  @Get('stations/:quantity')
   @Public()
   async getRandomStations(@Param('quantity') quantity: number) {
     const response = await firstValueFrom(

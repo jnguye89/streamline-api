@@ -11,7 +11,9 @@ import { multerConfig } from './multer.config';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './auth/jwt.strategy';
 import { S3Service } from './services/s3.service';
-// import { TypeOrmModule } from '@nestjs/typeorm';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { VideoRepository } from './repositories/video.repository';
+import { Video } from './entity/video.entity';
 
 @Module({
   imports: [
@@ -24,18 +26,25 @@ import { S3Service } from './services/s3.service';
         maxRedirects: 5,
       }),
     }),
-    // TypeOrmModule.forRoot({
-    //   type: 'mysql',
-    //   host: process.env.DB_HOST,
-    //   port: parseInt(process.env.DB_PORT ?? '3306', 10),
-    //   username: process.env.DB_USERNAME,
-    //   password: process.env.DB_PASSWORD,
-    //   database: process.env.DB_NAME,
-    //   autoLoadEntities: true,
-    //   synchronize: true, // turn off in prod
-    // }),
+    TypeOrmModule.forRoot({
+      type: 'mysql',
+      host: process.env.DB_HOST,
+      port: parseInt(process.env.DB_PORT ?? '3306', 10),
+      username: process.env.DB_USERNAME,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      autoLoadEntities: true,
+      synchronize: true, // turn off in prod
+    }),
+    TypeOrmModule.forFeature([Video]),
   ],
   controllers: [AppController, VideoController, ListenController],
-  providers: [VideoService, ListenService, JwtStrategy, S3Service],
+  providers: [
+    VideoService,
+    ListenService,
+    JwtStrategy,
+    S3Service,
+    VideoRepository,
+  ],
 })
 export class AppModule {}
