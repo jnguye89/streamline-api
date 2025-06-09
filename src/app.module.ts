@@ -28,11 +28,11 @@ import { Video } from './entity/video.entity';
     }),
     TypeOrmModule.forRoot({
       type: 'mysql',
-      host: process.env.DB_HOST,
-      port: parseInt(process.env.DB_PORT ?? '3306', 10),
-      username: process.env.DB_USERNAME,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
+      host: process.env.RDS_HOSTNAME,
+      port: parseInt(process.env.RDS_PORT ?? '3306', 10),
+      username: process.env.RDS_USERNAME,
+      password: process.env.RDS_PASSWORD,
+      database: process.env.RDS_DB_NAME,
       autoLoadEntities: true,
       synchronize: true, // turn off in prod
     }),
