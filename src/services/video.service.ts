@@ -29,8 +29,15 @@ export class VideoService {
     return this.videoRepository.findAll();
   }
 
-  async getDbVideosByUserId(userId: string): Promise<VideoDto[]> {
-    return this.videoRepository.findAllByUserId(userId);
+  async getDbVideosByUserId(userId: string): Promise<Video[]> {
+    const videos = await this.videoRepository.findAllByUserId(userId);
+
+    return Promise.all(
+      videos.map(async (video) => {
+        const url = await this.s3Service.getSignedUrl(video.videoPath);
+        return { ...video, videoPath: url } as Video;
+      }),
+    );
   }
 
   async uploadVideoToDb(video: VideoDto): Promise<Video> {

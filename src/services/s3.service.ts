@@ -55,25 +55,26 @@ export class S3Service {
       const file = `uploads/${uuidv4()}-${key}`;
       const command = new PutObjectCommand({
         Bucket: this.bucket,
-        // Bucket: 'the wrong bucket',
         Key: file,
         Body: fileBuffer,
         ContentType: mimeType,
       });
-      // console.log(command);
 
       await this.s3.send(command);
-      const getCmd = new GetObjectCommand({
-        Bucket: this.bucket,
-        Key: file,
-      });
-      return getSignedUrl(this.s3, getCmd, { expiresIn: 3600 });
-
-      // return `https://${this.bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${file}`;
+      return file;
     } catch (error) {
       console.error('Error uploading file to S3:', error);
       throw error;
       // return 'this is a test url';
     }
+  }
+
+  async getSignedUrl(key: string): Promise<string> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+    });
+
+    return getSignedUrl(this.s3, command, { expiresIn: 3600 }); // 1 hour
   }
 }
