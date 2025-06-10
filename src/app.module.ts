@@ -32,7 +32,7 @@ import { Video } from './entity/video.entity';
       port: parseInt(process.env.RDS_PORT ?? '3306', 10),
       username: process.env.RDS_USERNAME,
       password: process.env.RDS_PASSWORD,
-      database: process.env.RDS_DB_NAME,
+      database: process.env.STREAMLINE_DB_NAME,
       autoLoadEntities: true,
       synchronize: true, // turn off in prod
     }),
