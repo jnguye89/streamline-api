@@ -11,9 +11,9 @@ export class VideoService {
     private videoRepository: VideoRepository,
   ) {}
 
-  async getAllVideos(): Promise<string[]> {
-    return this.s3Service.listFiles();
-  }
+  // async getAllVideos(): Promise<string[]> {
+  //   return this.s3Service.listFiles();
+  // }
 
   async uploadVideo(file: Express.Multer.File): Promise<string> {
     const blob = this.s3Service.uploadFile(
@@ -25,8 +25,14 @@ export class VideoService {
     return blob;
   }
 
-  async getDbVideos(): Promise<VideoDto[]> {
-    return this.videoRepository.findAll();
+  async getAllVideos(): Promise<VideoDto[]> {
+    const videos = await this.videoRepository.findAll();
+    return Promise.all(
+      videos.map(async (video) => {
+        const url = await this.s3Service.getSignedUrl(video.videoPath);
+        return { ...video, videoPath: url } as Video;
+      }),
+    );
   }
 
   async getDbVideosByUserId(userId: string): Promise<Video[]> {

@@ -4,6 +4,7 @@ import {
   Post,
   UseInterceptors,
   UploadedFile,
+  Param,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Public } from './../../auth/public.decorator';
@@ -18,22 +19,14 @@ export class VideoController {
 
   @Get()
   @Public()
-  async getAllVideos(): Promise<string[]> {
+  async getAllVideos(): Promise<VideoDto[]> {
     return await this.videoService.getAllVideos();
   }
 
-  @Get('db')
+  @Get('user/:id')
   @Public()
-  async getDbVideos(): Promise<VideoDto[]> {
-    return await this.videoService.getDbVideos();
-  }
-
-  @Get('user')
-  async getUserVideos(@User() user: UserDto): Promise<VideoDto[]> {
-    if (!user || !user.userId) {
-      throw new Error('User not authenticated.');
-    }
-    return await this.videoService.getDbVideosByUserId(user.userId);
+  async getUserVideos(@Param('id') id: string): Promise<VideoDto[]> {
+    return await this.videoService.getDbVideosByUserId(id);
   }
 
   @UseInterceptors(FileInterceptor('file'))
