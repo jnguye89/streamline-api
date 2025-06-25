@@ -12,10 +12,14 @@ import { VideoService } from 'src/services/video.service';
 import { User } from 'src/auth/user.decorator';
 import { VideoDto } from 'src/dto/video.dto';
 import { UserDto } from 'src/dto/user.dto';
+import { IvsService } from 'src/services/ivs.services';
 
 @Controller('video')
 export class VideoController {
-  constructor(private videoService: VideoService) {}
+  constructor(
+    private videoService: VideoService,
+    private ivsService: IvsService,
+  ) {}
 
   @Get()
   @Public()
@@ -45,5 +49,14 @@ export class VideoController {
       user: `${user.userId}`,
     });
     return;
+  }
+
+  @Get('status')
+  @Public()
+  async checkLive() {
+    const channelArn =
+      'arn:aws:ivs:us-west-2:578074109079:channel/kqI34tnoji5s';
+    const isLive = await this.ivsService.isStreamLive(channelArn);
+    return { isLive };
   }
 }

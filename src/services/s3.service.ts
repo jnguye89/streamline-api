@@ -5,8 +5,11 @@ import {
   ListObjectsV2Command,
   PutObjectCommand,
   GetObjectCommand,
+  ObjectCannedACL,
 } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
+// import * as mime from 'mime-types';
+import mime from 'mime-types'; // not 'mime'
 
 @Injectable()
 export class S3Service {
@@ -15,6 +18,25 @@ export class S3Service {
 
   constructor() {
     this.s3 = new S3Client({ region: process.env.AWS_REGION });
+  }
+
+  async uploadAudioToS3(file: Express.Multer.File): Promise<string> {
+    const extension = mime.extension(file.mimetype as string);
+    if (!extension) throw new Error('Invalid mimetype');
+
+    const key = `audio/${uuidv4()}.${extension}`;
+
+    const uploadParams = {
+      Bucket: this.bucket,
+      Key: key,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+      ACL: 'public-read' as ObjectCannedACL, // Optional: Set ACL to public-read if you want the file to be publicly accessible
+    };
+
+    await this.s3.send(new PutObjectCommand(uploadParams));
+
+    return `https://${this.bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
   }
 
   async listFiles(prefix = 'uploads'): Promise<string[]> {

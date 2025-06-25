@@ -8,7 +8,7 @@ import {
 } from 'typeorm';
 
 @Entity()
-export class Video {
+export class Audio {
   @AutoMap()
   @PrimaryGeneratedColumn()
   id: number;
@@ -19,15 +19,15 @@ export class Video {
 
   @AutoMap()
   @Column({ length: 2083 })
-  videoPath: string;
+  audioPath: string;
 
-  /** Set automatically on INSERT */
   @AutoMap()
+  /** Set automatically on INSERT */
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   createdAt: Date;
 
-  /** Bumped automatically on UPDATE */
   @AutoMap()
+  /** Bumped automatically on UPDATE */
   @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
   updatedAt: Date;
 }

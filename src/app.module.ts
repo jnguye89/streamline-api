@@ -14,9 +14,20 @@ import { S3Service } from './services/s3.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { VideoRepository } from './repositories/video.repository';
 import { Video } from './entity/video.entity';
+import { Audio } from './entity/audio.entity';
+import { IvsService } from './services/ivs.services';
+import { AudioRepository } from './repositories/audio.repository';
+import { AutomapperModule } from '@automapper/nestjs';
+import { classes } from '@automapper/classes';
+import { AudioProfile } from './mappers/audio.mapper';
+import { VideoProfile } from './mappers/video.mapper';
 
 @Module({
   imports: [
+    AutomapperModule.forRoot({
+      strategyInitializer: classes(),
+    }),
+    // AutomapperModule.forFeature([VideoProfile]),
     PassportModule,
     MulterModule.register(multerConfig),
     ConfigModule.forRoot({ cache: true, isGlobal: true }),
@@ -36,7 +47,7 @@ import { Video } from './entity/video.entity';
       autoLoadEntities: true,
       synchronize: true, // turn off in prod
     }),
-    TypeOrmModule.forFeature([Video]),
+    TypeOrmModule.forFeature([Video, Audio]),
   ],
   controllers: [AppController, VideoController, ListenController],
   providers: [
@@ -45,6 +56,10 @@ import { Video } from './entity/video.entity';
     JwtStrategy,
     S3Service,
     VideoRepository,
+    IvsService,
+    AudioRepository,
+    AudioProfile,
+    VideoProfile,
   ],
 })
 export class AppModule {}

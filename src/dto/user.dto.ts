@@ -1,3 +1,3 @@
-export interface UserDto {
+export class UserDto {
   userId: string;
 }

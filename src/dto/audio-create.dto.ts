@@ -1,8 +1,8 @@
 import { AutoMap } from '@automapper/classes';
 
-export class VideoDto {
+export class AudioCreateDto {
   @AutoMap()
   user: string;
   @AutoMap()
-  videoPath: string;
+  audioPath: string;
 }
