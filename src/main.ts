@@ -5,7 +5,7 @@ import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './controllers/all-exceptions.filter';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { Reflector } from '@nestjs/core';
-import { IoAdapter } from '@nestjs/platform-socket.io';
+// import { IoAdapter } from '@nestjs/platform-socket.io';
 import { ClassSerializerInterceptor } from '@nestjs/common';
 
 async function bootstrap() {
@@ -14,7 +14,7 @@ async function bootstrap() {
   // app.use(bodyParser.urlencoded({ limit: '100mb', extended: true }));
   // app.useGlobalFilters(new MulterExceptionFilter());
   app.useGlobalFilters(new AllExceptionsFilter());
-  app.useWebSocketAdapter(new IoAdapter(app));
+  // app.useWebSocketAdapter(new IoAdapter(app));
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   const reflector = app.get(Reflector);
