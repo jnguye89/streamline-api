@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { S3Service } from './s3.service';
+import { S3Service } from './third-party/s3.service';
 import { VideoRepository } from 'src/repositories/video.repository';
 import { Video } from 'src/entity/video.entity';
 import { VideoDto } from 'src/dto/video.dto';

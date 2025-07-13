@@ -10,17 +10,24 @@ import { MulterModule } from '@nestjs/platform-express';
 import { multerConfig } from './multer.config';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './auth/jwt.strategy';
-import { S3Service } from './services/s3.service';
+import { S3Service } from './services/third-party/s3.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { VideoRepository } from './repositories/video.repository';
 import { Video } from './entity/video.entity';
 import { Audio } from './entity/audio.entity';
-import { IvsService } from './services/ivs.services';
+import { IvsService } from './services/third-party/ivs.services';
 import { AudioRepository } from './repositories/audio.repository';
 import { AutomapperModule } from '@automapper/nestjs';
 import { classes } from '@automapper/classes';
 import { AudioProfile } from './mappers/audio.mapper';
 import { VideoProfile } from './mappers/video.mapper';
+import { User_Integration } from './entity/user-integration.entity';
+import { UserIntegrationController } from './controllers/user-integration.controller';
+import { UserIntegrationService } from './services/user-integration.service';
+import { UserIntegrationRepository } from './repositories/user-integration.repository';
+import { UserIntegratinProfile } from './mappers/user-integration.mapper';
+import { VoxAuthService } from './services/third-party/vox-auth.service';
+import { VoximplantService } from './services/third-party/voximplant.service';
 
 @Module({
   imports: [
@@ -47,10 +54,17 @@ import { VideoProfile } from './mappers/video.mapper';
       autoLoadEntities: true,
       synchronize: true, // turn off in prod
     }),
-    TypeOrmModule.forFeature([Video, Audio]),
+    TypeOrmModule.forFeature([Video, Audio, User_Integration]),
   ],
-  controllers: [AppController, VideoController, ListenController],
+  controllers: [
+    AppController,
+    VideoController,
+    ListenController,
+    UserIntegrationController,
+  ],
   providers: [
+    VoximplantService,
+    VoxAuthService,
     VideoService,
     ListenService,
     JwtStrategy,
@@ -60,6 +74,9 @@ import { VideoProfile } from './mappers/video.mapper';
     AudioRepository,
     AudioProfile,
     VideoProfile,
+    UserIntegrationService,
+    UserIntegrationRepository,
+    UserIntegratinProfile,
   ],
 })
 export class AppModule {}

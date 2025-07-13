@@ -12,7 +12,7 @@ import { ListenService } from 'src/services/listen.service';
 import { User } from 'src/auth/user.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UserDto } from 'src/dto/user.dto';
-import { S3Service } from 'src/services/s3.service';
+import { S3Service } from 'src/services/third-party/s3.service';
 import { AudioDto } from 'src/dto/audio.dto';
 
 @Controller('listen')

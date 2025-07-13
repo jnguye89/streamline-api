@@ -12,7 +12,7 @@ import { VideoService } from 'src/services/video.service';
 import { User } from 'src/auth/user.decorator';
 import { VideoDto } from 'src/dto/video.dto';
 import { UserDto } from 'src/dto/user.dto';
-import { IvsService } from 'src/services/ivs.services';
+import { IvsService } from 'src/services/third-party/ivs.services';
 
 @Controller('video')
 export class VideoController {
