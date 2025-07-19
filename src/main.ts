@@ -10,11 +10,7 @@ import { ClassSerializerInterceptor } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  // app.use(bodyParser.json({ limit: '100mb' }));
-  // app.use(bodyParser.urlencoded({ limit: '100mb', extended: true }));
-  // app.useGlobalFilters(new MulterExceptionFilter());
   app.useGlobalFilters(new AllExceptionsFilter());
-  // app.useWebSocketAdapter(new IoAdapter(app));
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   const reflector = app.get(Reflector);
