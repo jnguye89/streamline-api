@@ -33,7 +33,11 @@ export class VideoController {
     return await this.videoService.getDbVideosByUserId(id);
   }
 
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 500 * 1024 * 1024 }, // 500 MB
+    }),
+  )
   @Post()
   async createVideo(
     @UploadedFile() file: Express.Multer.File,
@@ -44,11 +48,15 @@ export class VideoController {
     }
     const url = await this.videoService.uploadVideo(file);
 
-    await this.videoService.uploadVideoToDb({
+    const video = await this.videoService.uploadVideoToDb({
       videoPath: url,
       user: `${user.userId}`,
     });
-    return;
+
+    return {
+      ...video,
+      videoPath: await this.videoService.getSignedUrl(video.videoPath),
+    };
   }
 
   @Get('status')

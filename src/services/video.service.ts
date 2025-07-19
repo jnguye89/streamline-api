@@ -25,6 +25,10 @@ export class VideoService {
     return blob;
   }
 
+  async getSignedUrl(key: string): Promise<string> {
+    return this.s3Service.getSignedUrl(key);
+  }
+
   async getAllVideos(): Promise<VideoDto[]> {
     const videos = await this.videoRepository.findAll();
     console.log(videos);

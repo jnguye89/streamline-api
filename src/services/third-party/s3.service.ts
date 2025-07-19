@@ -8,8 +8,8 @@ import {
   ObjectCannedACL,
 } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
-// import * as mime from 'mime-types';
 import mime from 'mime-types'; // not 'mime'
+import { Readable } from 'stream';
 
 @Injectable()
 export class S3Service {
@@ -75,11 +75,13 @@ export class S3Service {
   ): Promise<string> {
     try {
       const file = `uploads/${uuidv4()}-${key}`;
+      const stream = Readable.from(fileBuffer);
       const command = new PutObjectCommand({
         Bucket: this.bucket,
         Key: file,
-        Body: fileBuffer,
+        Body: stream,
         ContentType: mimeType,
+        ContentLength: fileBuffer.length, // <- required for buffer uploads
       });
 
       await this.s3.send(command);
