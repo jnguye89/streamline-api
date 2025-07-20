@@ -54,4 +54,11 @@ export class VideoService {
   async uploadVideoToDb(video: VideoDto): Promise<VideoDto> {
     return this.videoRepository.create(video);
   }
+
+  public async generateUploadUrl(
+    fileName: string,
+    mimeType: string,
+  ): Promise<{ uploadUrl: string; key: string }> {
+    return await this.s3Service.generateUploadUrl(fileName, mimeType);
+  }
 }

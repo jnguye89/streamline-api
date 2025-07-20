@@ -101,4 +101,21 @@ export class S3Service {
 
     return getSignedUrl(this.s3, command, { expiresIn: 3600 }); // 1 hour
   }
+
+  public async generateUploadUrl(
+    fileName: string,
+    mimeType: string,
+  ): Promise<{ uploadUrl: string; key: string }> {
+    const key = `uploads/${uuidv4()}-${fileName}`;
+    const command = new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      ContentType: mimeType,
+      // ACL: 'public-read', // optional
+    });
+
+    const uploadUrl = await getSignedUrl(this.s3, command, { expiresIn: 600 }); // 10 min
+
+    return { uploadUrl, key };
+  }
 }

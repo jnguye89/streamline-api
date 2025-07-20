@@ -5,6 +5,7 @@ import {
   UseInterceptors,
   UploadedFile,
   Param,
+  Body,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Public } from './../../auth/public.decorator';
@@ -39,17 +40,14 @@ export class VideoController {
     }),
   )
   @Post()
-  async createVideo(
-    @UploadedFile() file: Express.Multer.File,
-    @User() user: UserDto,
-  ) {
-    if (!file) {
-      throw new Error('No file provided.');
-    }
-    const url = await this.videoService.uploadVideo(file);
+  async createVideo(@Body() body: { key: string }, @User() user: UserDto) {
+    // if (!file) {
+    //   throw new Error('No file provided.');
+    // }
+    // const url = await this.videoService.uploadVideo(file);
 
     const video = await this.videoService.uploadVideoToDb({
-      videoPath: url,
+      videoPath: body.key,
       user: `${user.userId}`,
     });
 
@@ -58,6 +56,8 @@ export class VideoController {
       videoPath: await this.videoService.getSignedUrl(video.videoPath),
     };
   }
+  // @Post()
+  // async createVideo()
 
   @Get('status')
   @Public()
@@ -66,5 +66,16 @@ export class VideoController {
       'arn:aws:ivs:us-west-2:578074109079:channel/kqI34tnoji5s';
     const isLive = await this.ivsService.isStreamLive(channelArn);
     return { isLive };
+  }
+
+  @Post('presign')
+  async getUploadPresignedUrl(
+    @Body() body: { fileName: string; mimeType: string },
+  ) {
+    const result = await this.videoService.generateUploadUrl(
+      body.fileName,
+      body.mimeType,
+    );
+    return result; // returns { uploadUrl, key }
   }
 }
