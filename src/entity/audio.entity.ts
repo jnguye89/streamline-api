@@ -18,6 +18,10 @@ export class Audio {
   user: string;
 
   @AutoMap()
+  @Column({ length: 100, nullable: true })
+  name: string;
+
+  @AutoMap()
   @Column({ length: 2083 })
   audioPath: string;
 

@@ -44,6 +44,7 @@ export class ListenController {
         return {
           audioPath: audio.url,
           user: null,
+          name: audio.name,
         } as AudioDto;
       }),
     );
@@ -60,6 +61,7 @@ export class ListenController {
     await this.listenService.uploadAudioToDb({
       audioPath: url,
       user: `${user.userId}`,
+      name: null,
     });
     return url;
   }

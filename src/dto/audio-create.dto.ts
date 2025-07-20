@@ -5,4 +5,6 @@ export class AudioCreateDto {
   user: string;
   @AutoMap()
   audioPath: string;
+  @AutoMap()
+  name: string | null;
 }
