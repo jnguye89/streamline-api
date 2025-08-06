@@ -28,6 +28,8 @@ import { UserIntegrationRepository } from './repositories/user-integration.repos
 import { UserIntegratinProfile } from './mappers/user-integration.mapper';
 import { VoxAuthService } from './services/third-party/vox-auth.service';
 import { VoximplantService } from './services/third-party/voximplant.service';
+import { StreamsController } from './controllers/wowza.controller';
+import { WowzaService } from './services/third-party/wowza.service';
 
 @Module({
   imports: [
@@ -61,6 +63,7 @@ import { VoximplantService } from './services/third-party/voximplant.service';
     VideoController,
     ListenController,
     UserIntegrationController,
+    StreamsController,
   ],
   providers: [
     VoximplantService,
@@ -77,6 +80,7 @@ import { VoximplantService } from './services/third-party/voximplant.service';
     UserIntegrationService,
     UserIntegrationRepository,
     UserIntegratinProfile,
+    WowzaService,
   ],
 })
 export class AppModule {}
