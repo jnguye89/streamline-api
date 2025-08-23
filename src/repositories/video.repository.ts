@@ -23,9 +23,7 @@ export class VideoRepository {
 
   async findAll(): Promise<VideoDto[]> {
     const entity = await this.videoRepo.find();
-    console.log(entity);
     const mapped = this.mapper.mapArray(entity, Video, VideoDto);
-    console.log(mapped);
     return mapped;
   }
 
