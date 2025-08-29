@@ -4,7 +4,7 @@ export class StreamDto {
     @AutoMap()
     id: number;
     @AutoMap()
-    streamId: string;
+    wowzaId: string;
     @AutoMap()
     broadcastLocation: string;
     @AutoMap()
@@ -13,4 +13,18 @@ export class StreamDto {
     wssStreamUrl: string;
     @AutoMap()
     streamName: string;
+    @AutoMap()
+    phase: 'idle' | 'starting' | 'ready' | 'publishing' | 'ended' | 'error';
+    @AutoMap()
+    lastWowzaState?: string;
+    @AutoMap()
+    errorMessage?: string;
+    @AutoMap()
+    isProvisioning: boolean;
+    @AutoMap()
+    provisionedUser: string | null;
+    @AutoMap()
+    createdAt: Date;
+    @AutoMap()
+    updatedAt: Date;
 }

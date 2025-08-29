@@ -34,6 +34,8 @@ import { StreamController } from './controllers/stream/stream.controller';
 import { StreamService } from './services/stream.service';
 import { StreamRepository } from './repositories/stream.repository';
 import { WowzaService } from './services/third-party/wowza.service';
+import { StreamsEvents } from './services/third-party/streams.events';
+import { PublisherPresenceService } from './services/publisher-presence.service';
 
 @Module({
   imports: [
@@ -88,6 +90,8 @@ import { WowzaService } from './services/third-party/wowza.service';
     UserIntegrationService,
     UserIntegrationRepository,
     UserIntegratinProfile,
+    StreamsEvents,
+    PublisherPresenceService
   ],
 })
 export class AppModule { }

@@ -1,5 +1,5 @@
 import { AutoMap } from "@automapper/classes";
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 @Entity()
 export class Stream {
@@ -9,7 +9,7 @@ export class Stream {
 
     @AutoMap()
     @Column({ length: 10, unique: true })
-    streamId: string;
+    wowzaId: string;
 
     @AutoMap()
     @Column({ length: 50 })
@@ -24,14 +24,32 @@ export class Stream {
     wssStreamUrl: string;
 
     @AutoMap()
-    @Column({length: 10})
+    @Column({ length: 10 })
     streamName: string;
 
-    @AutoMap()
-    @Column({ default: false })
-    isActive: boolean;
+    @Index()
+    @Column({ length: 16 })
+    phase!: 'idle' | 'starting' | 'ready' | 'publishing' | 'ended' | 'error';
 
-    @AutoMap()
-    @Column({ default: false})
-    isLive: boolean;
+    /** raw last known wowza state (optional) */
+    @Column({ nullable: true })
+    lastWowzaState?: string;
+
+    /** human-readable error if any */
+    @Column({ nullable: true })
+    errorMessage?: string;
+
+    /** avoid duplicate starts; set true while polling */
+    @Index()
+    @Column({ default: false })
+    isProvisioning!: boolean;
+
+    @Column({ type: 'varchar', length: 255, nullable: true })
+    provisonedUser: string | null;
+
+    @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
+    createdAt!: Date;
+
+    @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
+    updatedAt!: Date;
 }

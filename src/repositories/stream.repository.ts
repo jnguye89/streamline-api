@@ -18,33 +18,33 @@ export class StreamRepository {
 
     async findStream(isActive: boolean, isLive: boolean, count?: number): Promise<StreamDto[]> {
         const entity = await this.streamRepo.find({
-            where: {
-                isActive,
-                isLive
-            },
+            // where: {
+            //     isActive,
+            //     isLive
+            // },
             take: count
         })
         return this.mapper.mapArray(entity, Stream, StreamDto);
     }
 
-    async create(streamDto: StreamDto): Promise<StreamDto> {
-        // const entity = this.mapper
-        const video = this.streamRepo.create(
-            this.mapper.map(streamDto, StreamDto, Stream),
-        );
-        return this.mapper.map(await this.streamRepo.save(streamDto), Stream, StreamDto);
-    }
+    // async create(streamDto: StreamDto): Promise<StreamDto> {
+    //     // const entity = this.mapper
+    //     const video = this.streamRepo.create(
+    //         this.mapper.map(streamDto, StreamDto, Stream),
+    //     );
+    //     return this.mapper.map(await this.streamRepo.save(streamDto), Stream, StreamDto);
+    // }
 
-    async updateStreamStatus(streamId: string, isActive: boolean, isLive: boolean): Promise<StreamDto> {
+    async updateStreamStatus(wowzaId: string, isActive: boolean, isLive: boolean): Promise<StreamDto> {
         const entity = await this.streamRepo.findOne({
             where: {
-                streamId
+                wowzaId
             }
         });
         if (entity == null) throw new HttpException(`Srream not found`, 401);
-        entity.isActive = isActive;
-        entity.isLive = isLive;
+        // entity.isActive = isActive;
+        // entity.isLive = isLive;
         const stream = await this.streamRepo.save(entity);
-        return this.mapper.map(stream, StreamDto, Stream);
+        return this.mapper.map(stream, Stream, StreamDto);
     }
 }
