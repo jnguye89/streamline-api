@@ -28,6 +28,14 @@ import { UserIntegrationRepository } from './repositories/user-integration.repos
 import { UserIntegratinProfile } from './mappers/user-integration.mapper';
 import { VoxAuthService } from './services/third-party/vox-auth.service';
 import { VoximplantService } from './services/third-party/voximplant.service';
+import { Stream } from './entity/stream.entity';
+import { StreamProfile } from './mappers/stream.mapper';
+import { StreamController } from './controllers/stream/stream.controller';
+import { StreamService } from './services/stream.service';
+import { StreamRepository } from './repositories/stream.repository';
+import { WowzaService } from './services/third-party/wowza.service';
+import { StreamsEvents } from './services/third-party/streams.events';
+import { PublisherPresenceService } from './services/publisher-presence.service';
 
 @Module({
   imports: [
@@ -54,11 +62,12 @@ import { VoximplantService } from './services/third-party/voximplant.service';
       autoLoadEntities: true,
       synchronize: true, // turn off in prod
     }),
-    TypeOrmModule.forFeature([Video, Audio, User_Integration]),
+    TypeOrmModule.forFeature([Video, Audio, User_Integration, Stream]),
   ],
   controllers: [
     AppController,
     VideoController,
+    StreamController,
     ListenController,
     UserIntegrationController,
   ],
@@ -66,17 +75,23 @@ import { VoximplantService } from './services/third-party/voximplant.service';
     VoximplantService,
     VoxAuthService,
     VideoService,
+    StreamService,
     ListenService,
     JwtStrategy,
     S3Service,
     VideoRepository,
+    StreamRepository,
     IvsService,
     AudioRepository,
     AudioProfile,
     VideoProfile,
+    StreamProfile,
+    WowzaService,
     UserIntegrationService,
     UserIntegrationRepository,
     UserIntegratinProfile,
+    StreamsEvents,
+    PublisherPresenceService
   ],
 })
-export class AppModule {}
+export class AppModule { }

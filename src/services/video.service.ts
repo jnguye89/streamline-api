@@ -31,7 +31,6 @@ export class VideoService {
 
   async getAllVideos(): Promise<VideoDto[]> {
     const videos = await this.videoRepository.findAll();
-    console.log(videos);
     return Promise.all(
       videos.map(async (video) => {
         const url = await this.s3Service.getSignedUrl(video.videoPath);

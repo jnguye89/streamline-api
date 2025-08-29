@@ -40,7 +40,7 @@ export class VideoController {
     }),
   )
   @Post()
-  async createVideo(@Body() body: { key: string }, @User() user: UserDto) {
+async createVideo(@Body() body: { key: string }, @User() user: UserDto) {
     // if (!file) {
     //   throw new Error('No file provided.');
     // }
