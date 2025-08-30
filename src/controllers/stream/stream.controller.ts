@@ -48,7 +48,6 @@ export class StreamController {
 
     @Put(':id/stop')
     async stop(@Param('id') id: number) {
-        console.log('stop')
         await this.streamService.updateStreamPhase(id, false)
     }
 
@@ -72,6 +71,7 @@ export class StreamController {
     // Beacon fallback on pagehide
     @Post(':id/publish/leave')
     async leave(@Param('id') id: number, @Body() body: { sessionId: string }) {
+        console.log('publish/leave');
         await this.publisherPresence.leave(id, body.sessionId, 'beacon');
         return { ok: true };
     }
