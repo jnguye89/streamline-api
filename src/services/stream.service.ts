@@ -146,4 +146,8 @@ export class StreamService {
         entity.provisonedUser = null;
         await this.repo.save(entity);
     }
+
+    async getStreams() {
+        return await this.repo.find({ where: { phase: 'publishing' } })
+    }
 }
