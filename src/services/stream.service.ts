@@ -32,11 +32,11 @@ export class StreamService {
             for (const r of ready) {
                 const stream = await this.wowza.getLiveStream(r.wowzaId);
                 if (await this.wowza.isReadyState(stream)) {
-                    this.repo.save({
+                    const newStream = this.repo.save({
                         ...r,
                         provisonedUser: user
                     })
-                    return r;
+                    return newStream;
                 }
                 else {
                     this.repo.save({
