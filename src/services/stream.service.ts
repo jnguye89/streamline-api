@@ -55,6 +55,14 @@ export class StreamService {
         });
         let newStream: Stream;
         if (idle.length > 0) {
+            const stream = await this.wowza.getLiveStream(idle[0].wowzaId);
+            if (stream.live_stream.state === 'started') {
+                const entity = idle[0];
+                entity.phase = 'ready';
+                entity.provisonedUser = user;
+                await this.repo.save(entity);
+                return entity;
+            }
             newStream = idle[0];
             newStream.isProvisioning = true;
             newStream.provisonedUser = user;
@@ -77,18 +85,18 @@ export class StreamService {
         this.startAndPoll(newStream.id, newStream.wowzaId).catch(async (err) => {
             await this.setPhase(newStream.id, 'error', undefined, String(err?.message ?? err));
         });
-
         return newStream;
     }
 
     private async startAndPoll(id: number, wowzaId: string) {
         // start (idempotent if already started on Wowza)
-        console.log('starting in wowza');
-        await this.wowza.startLiveStream(wowzaId);
+        const stream = await this.wowza.getLiveStream(wowzaId);
+        if (stream.live_stream.state.toLowerCase() === 'stopped') {
+            await this.wowza.startLiveStream(wowzaId);
+        }
         // progressive backoff: 2s,4s,6s,... up to ~90s
         const start = Date.now();
         let attempt = 0;
-        console.log('starting emitting events for updates');
         while (Date.now() - start < 120_000) {
             attempt++;
             const ls = await this.wowza.getLiveStream(wowzaId);
