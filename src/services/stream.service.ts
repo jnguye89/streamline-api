@@ -2,12 +2,13 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { StreamDto } from "src/dto/stream.dto";
 import { Stream } from "src/entity/stream.entity";
 import { StreamRepository } from "src/repositories/stream.repository";
-import { IsNull, Repository } from "typeorm";
+import { In, IsNull, Not, Repository } from "typeorm";
 import { WowzaService } from "./third-party/wowza.service";
 import { StreamsEvents } from "./third-party/streams.events";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Mapper } from "@automapper/core";
 import { InjectMapper } from "@automapper/nestjs";
+import { Cron } from "@nestjs/schedule";
 
 @Injectable()
 export class StreamService {
@@ -86,6 +87,36 @@ export class StreamService {
             await this.setPhase(newStream.id, 'error', undefined, String(err?.message ?? err));
         });
         return newStream;
+    }
+
+    @Cron('*/10 * * * *') // every 1 min
+    async cleanupStreams() {
+        const streams = await this.repo.find({
+            where: [
+                { isProvisioning: true },
+                { provisonedUser: Not(IsNull()) },
+            ],
+        });
+        for (var stream of streams) {
+            const liveStream = await this.wowza.getLiveStream(stream.wowzaId);
+            switch (liveStream.live_stream.state) {
+                case 'stopped':
+                    stream.phase = 'idle';
+                    stream.provisonedUser = null;
+                    break;
+                case 'starting':
+                    break;
+                case 'started':
+                    const isStreaming = await this.wowza.isStreaming(stream.wowzaId);
+                    stream.phase = isStreaming ? 'publishing' : 'ready';
+                    break;
+                default:
+                    stream.phase = 'idle';
+                    break;
+            }
+            await this.repo.save(stream);
+
+        }
     }
 
     private async startAndPoll(id: number, wowzaId: string) {

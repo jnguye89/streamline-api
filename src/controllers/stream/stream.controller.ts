@@ -8,6 +8,7 @@ import { StreamsEvents } from "src/services/third-party/streams.events";
 import { Request } from 'express';
 import { Public } from "src/auth/public.decorator";
 import { Stream } from "src/entity/stream.entity";
+import { Cron } from "@nestjs/schedule";
 
 @Controller('stream')
 export class StreamController {

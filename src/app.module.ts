@@ -36,9 +36,11 @@ import { StreamRepository } from './repositories/stream.repository';
 import { WowzaService } from './services/third-party/wowza.service';
 import { StreamsEvents } from './services/third-party/streams.events';
 import { PublisherPresenceService } from './services/publisher-presence.service';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     AutomapperModule.forRoot({
       strategyInitializer: classes(),
     }),

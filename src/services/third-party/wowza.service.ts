@@ -79,4 +79,14 @@ export class WowzaService {
         // (You can refine to check transcoder/encoder details if needed)
         return false;
     }
+
+    async isStreaming(streamId: string): Promise<boolean> {
+        const { data } = await firstValueFrom(
+            this.http.get<StreamStatusDto>(`${this.wowzaUrl}/analytics/ingest/live_streams/${streamId}`, {
+                headers: { Authorization: `Bearer ${this.wowzaToken}` },
+            },),
+        );
+
+        return data.live_stream.bytes_in_rate.value > 0;
+    }
 }
