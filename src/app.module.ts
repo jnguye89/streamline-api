@@ -37,6 +37,11 @@ import { WowzaService } from './services/third-party/wowza.service';
 import { StreamsEvents } from './services/third-party/streams.events';
 import { PublisherPresenceService } from './services/publisher-presence.service';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThreadController } from './controllers/thread.controller';
+import { ThreadService } from './services/thread.service';
+import { ThreadRepository } from './repositories/thread.repository';
+import { Thread } from './entity/thread.entity';
+import { ThreadProfile } from './mappers/thread.mapper';
 
 @Module({
   imports: [
@@ -64,7 +69,7 @@ import { ScheduleModule } from '@nestjs/schedule';
       autoLoadEntities: true,
       synchronize: true, // turn off in prod
     }),
-    TypeOrmModule.forFeature([Video, Audio, User_Integration, Stream]),
+    TypeOrmModule.forFeature([Video, Audio, User_Integration, Stream, Thread]),
   ],
   controllers: [
     AppController,
@@ -72,6 +77,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     StreamController,
     ListenController,
     UserIntegrationController,
+    ThreadController
   ],
   providers: [
     VoximplantService,
@@ -89,11 +95,14 @@ import { ScheduleModule } from '@nestjs/schedule';
     VideoProfile,
     StreamProfile,
     WowzaService,
+    ThreadProfile,
     UserIntegrationService,
     UserIntegrationRepository,
     UserIntegratinProfile,
     StreamsEvents,
-    PublisherPresenceService
+    PublisherPresenceService,
+    ThreadService,
+    ThreadRepository
   ],
 })
 export class AppModule { }
