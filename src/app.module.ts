@@ -42,6 +42,11 @@ import { ThreadService } from './services/thread.service';
 import { ThreadRepository } from './repositories/thread.repository';
 import { Thread } from './entity/thread.entity';
 import { ThreadProfile } from './mappers/thread.mapper';
+import { User } from './entity/user.entity';
+import { UserRepository } from './repositories/user.repository';
+import { UserService } from './services/user.service';
+import { Auth0Service } from './services/third-party/auth0.service';
+import { UserProfile } from './mappers/user.mapper';
 
 @Module({
   imports: [
@@ -69,7 +74,7 @@ import { ThreadProfile } from './mappers/thread.mapper';
       autoLoadEntities: true,
       synchronize: true, // turn off in prod
     }),
-    TypeOrmModule.forFeature([Video, Audio, User_Integration, Stream, Thread]),
+    TypeOrmModule.forFeature([Video, Audio, User_Integration, Stream, Thread, User]),
   ],
   controllers: [
     AppController,
@@ -99,10 +104,14 @@ import { ThreadProfile } from './mappers/thread.mapper';
     UserIntegrationService,
     UserIntegrationRepository,
     UserIntegratinProfile,
+    UserProfile,
     StreamsEvents,
     PublisherPresenceService,
     ThreadService,
-    ThreadRepository
+    ThreadRepository,
+    UserRepository,
+    UserService,
+    Auth0Service
   ],
 })
 export class AppModule { }

@@ -17,7 +17,7 @@ export class ThreadController {
 
     @Post()
     async createThread(@User() user: UserDto, @Body() dto: ThreadDto) {
-        dto.user = user.userId;
+        dto.auth0UserId = user.userId;
         return await this.threadService.createThread(dto);
     }
 }

@@ -15,6 +15,7 @@ export class ThreadRepository {
 
     async getLatest(count: number): Promise<ThreadDto[]> {
         const results = await this.threadRepo.find({
+            relations: { user: true },
             order: { createdAt: 'DESC' },
             take: count,
         });

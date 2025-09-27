@@ -1,5 +1,6 @@
 import { AutoMap } from "@automapper/classes";
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { User } from "./user.entity";
 
 @Entity()
 export class Thread {
@@ -9,11 +10,23 @@ export class Thread {
 
     @AutoMap()
     @Column({ length: 1000 })
-    threadItem: string;
+    threadText: string;
 
     @AutoMap()
-    @Column({ length: 255 })
-    user: string;
+    @Column({ name: "auth0_user_id", type: "varchar", length: 128 })
+    auth0UserId!: string;
+
+    // --- Relation to User (Many threads -> one user) ---
+    @ManyToOne(() => User, (u) => u.threads, {
+        onDelete: "RESTRICT", // or "SET NULL" if you make auth0UserId nullable
+        onUpdate: "CASCADE",
+    })
+    @AutoMap()
+    @JoinColumn({
+        name: "auth0_user_id",            // FK column in threads
+        referencedColumnName: "auth0UserId", // PK column in users
+    })
+    user!: User;
 
     @AutoMap()
     /** Set automatically on INSERT */
