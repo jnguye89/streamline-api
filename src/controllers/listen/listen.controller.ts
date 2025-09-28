@@ -20,15 +20,13 @@ export class ListenController {
   constructor(
     private listenService: ListenService,
     private s3Service: S3Service,
-  ) {}
+  ) { }
 
   @Get('stations/:quantity')
   @Public()
   async getRandomStations(@Param('quantity') quantity: number) {
-    const response = await firstValueFrom(
-      this.listenService.getRandomStations(quantity),
-    );
-    return response.data.map((station) => ({
+    const response = await this.listenService.getRandomStations(quantity);
+    return response.map((station) => ({
       name: station.name,
       url: station.url,
     }));
