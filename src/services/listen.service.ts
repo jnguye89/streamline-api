@@ -20,7 +20,7 @@ export class ListenService {
     console.log(r);
 
     for (const d of r.data) {
-      const url = `https://${d.name}/json/stations/search?limit=${quantity}&hidebroken=true`;
+      const url = `https://${d.name}/json/stations/search?limit=${quantity}&hidebroken=true&language=english&countrycode=US&lastcheckok=1`;
       try {
         const result: AxiosResponse<RadioStation[]> = await firstValueFrom(
           this.httpService.get<RadioStation[]>(url, {
