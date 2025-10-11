@@ -30,7 +30,7 @@ import { VoxAuthService } from './services/third-party/vox-auth.service';
 import { VoximplantService } from './services/third-party/voximplant.service';
 import { Stream } from './entity/stream.entity';
 import { StreamProfile } from './mappers/stream.mapper';
-import { StreamController } from './controllers/stream/stream.controller';
+import StreamController from './controllers/stream/stream.controller';
 import { StreamService } from './services/stream.service';
 import { StreamRepository } from './repositories/stream.repository';
 import { WowzaService } from './services/third-party/wowza.service';

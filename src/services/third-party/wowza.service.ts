@@ -6,6 +6,7 @@ import { StreamDto } from "src/dto/stream.dto";
 import { CreateLiveStreamDto } from "src/dto/wowza/create-live-stream.dto";
 import { LiveStreamResponse } from "src/dto/wowza/live-stream-response.dto";
 import { StreamStatusDto } from "src/dto/wowza/stream-status.dto";
+import { WowzaVideoDto } from "src/dto/wowza/video.dto";
 import { StreamRepository } from "src/repositories/stream.repository";
 
 @Injectable()
@@ -88,5 +89,14 @@ export class WowzaService {
         );
 
         return data.live_stream.bytes_in_rate.value > 0;
+    }
+
+    async getRecording(recordingId: string): Promise<{ download_url: string; video_id: string, extension: string; }> {
+        const { data } = await firstValueFrom(this.http.get<WowzaVideoDto>(`${this.wowzaUrl}/videos/${recordingId}`, {
+            headers: { Authorization: `Bearer ${this.wowzaToken}` }
+        }))
+
+        const video = data.video.encodings.filter(e => e.video_container == 'mp4').sort((a, b) => a < b ? -1 : a > b ? 1 : 0)[0];
+        return { download_url: video.video_file_url, video_id: data.video.id, extension: video.video_container };
     }
 }

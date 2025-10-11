@@ -8,14 +8,20 @@ import { StreamsEvents } from "src/services/third-party/streams.events";
 import { Request } from 'express';
 import { Public } from "src/auth/public.decorator";
 import { Stream } from "src/entity/stream.entity";
-import { Cron } from "@nestjs/schedule";
+import { WowzaEventDto } from "src/dto/wowza/wowza-event.dto";
+import { WowzaService } from "src/services/third-party/wowza.service";
+import { S3Service } from "src/services/third-party/s3.service";
+import { VideoService } from "src/services/video.service";
 
 @Controller('stream')
-export class StreamController {
+export default class StreamController {
     constructor(
         private streamService: StreamService,
         private stremEvents: StreamsEvents,
-        private publisherPresence: PublisherPresenceService
+        private publisherPresence: PublisherPresenceService,
+        private wowzaService: WowzaService,
+        private s3: S3Service,
+        private videoService: VideoService
     ) { }
 
     @Get()
@@ -81,5 +87,43 @@ export class StreamController {
         console.log('publish/leave');
         await this.publisherPresence.leave(id, body.sessionId, 'beacon');
         return { ok: true };
+    }
+
+    @Post('test')
+    @Public()
+    logWebhook(@Body() test: any) {
+        console.log(test)
+    }
+
+
+    @Post('webhook')
+    @Public()
+    async handleWowzaWebhook(@Body() payload: WowzaEventDto) {
+        // Optional: verify a shared secret signature here if configured.
+
+        // Accept a few possible shapes:
+        // { type: 'recording.completed', data: { recording_id, ... } }
+        // or { event_type: 'recording.completed', recording_id: '...' }
+        // or custom payload mapping to your workflow.
+        const type = payload?.event_type;
+        const recordingId = payload.object_id;
+        console.log(type);
+
+        // Ignore unrelated events
+        if (type !== 'video.ready') return { ok: true, ignored: true };
+
+        if (!recordingId) throw new Error('No recording_id in webhook payload');
+
+        // 1) Get Wowza recording (download_url + file_name)
+        const { download_url, video_id, extension } = await this.wowzaService.getRecording(recordingId);
+        // 2) Stream directly to S3
+        const s3Key = await this.s3.streamUrlToS3(download_url, video_id, extension);
+        // 3) Persist VOD metadata to your DB here (duration, owner, s3Key, etc.)
+        // TODO: assign it to the correct user
+        this.videoService.uploadVideoToDb({
+            user: 'auth0|68d9e24125d121501c3a47f7',
+            videoPath: s3Key
+        });
+        return { ok: true, recordingId, s3Key };
     }
 }

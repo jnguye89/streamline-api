@@ -11,20 +11,6 @@ export class VideoService {
     private videoRepository: VideoRepository,
   ) {}
 
-  // async getAllVideos(): Promise<string[]> {
-  //   return this.s3Service.listFiles();
-  // }
-
-  async uploadVideo(file: Express.Multer.File): Promise<string> {
-    const blob = this.s3Service.uploadFile(
-      file.buffer,
-      file.originalname,
-      file.mimetype,
-    );
-
-    return blob;
-  }
-
   async getSignedUrl(key: string): Promise<string> {
     return this.s3Service.getSignedUrl(key);
   }

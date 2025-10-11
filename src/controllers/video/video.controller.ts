@@ -34,31 +34,6 @@ export class VideoController {
     return await this.videoService.getDbVideosByUserId(id);
   }
 
-  @UseInterceptors(
-    FileInterceptor('file', {
-      limits: { fileSize: 500 * 1024 * 1024 }, // 500 MB
-    }),
-  )
-  @Post()
-async createVideo(@Body() body: { key: string }, @User() user: UserDto) {
-    // if (!file) {
-    //   throw new Error('No file provided.');
-    // }
-    // const url = await this.videoService.uploadVideo(file);
-
-    const video = await this.videoService.uploadVideoToDb({
-      videoPath: body.key,
-      user: `${user.userId}`,
-    });
-
-    return {
-      ...video,
-      videoPath: await this.videoService.getSignedUrl(video.videoPath),
-    };
-  }
-  // @Post()
-  // async createVideo()
-
   @Get('status')
   @Public()
   async checkLive() {

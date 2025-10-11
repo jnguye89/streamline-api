@@ -14,6 +14,16 @@ export class VideoRepository {
   ) {}
 
   async create(videoDto: VideoDto): Promise<VideoDto> {
+    // make sure it doesn't already exist
+    const entity = await this.videoRepo.find({
+      where: {
+        videoPath: videoDto.videoPath
+      }
+    })
+
+    if (entity.length > 0) {
+      return this.mapper.map(entity[0], Video, VideoDto);
+    }
     // const entity = this.mapper
     const video = this.videoRepo.create(
       this.mapper.map(videoDto, VideoDto, Video),

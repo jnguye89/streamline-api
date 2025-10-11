@@ -10,6 +10,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import mime from 'mime-types'; // not 'mime'
 import { Readable } from 'stream';
+import { Upload } from '@aws-sdk/lib-storage';
 
 @Injectable()
 export class S3Service {
@@ -68,31 +69,6 @@ export class S3Service {
     }
   }
 
-  async uploadFile(
-    fileBuffer: Buffer,
-    key: string,
-    mimeType: string,
-  ): Promise<string> {
-    try {
-      const file = `uploads/${uuidv4()}-${key}`;
-      const stream = Readable.from(fileBuffer);
-      const command = new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: file,
-        Body: stream,
-        ContentType: mimeType,
-        ContentLength: fileBuffer.length, // <- required for buffer uploads
-      });
-
-      await this.s3.send(command);
-      return file;
-    } catch (error) {
-      console.error('Error uploading file to S3:', error);
-      throw error;
-      // return 'this is a test url';
-    }
-  }
-
   async getSignedUrl(key: string): Promise<string> {
     const command = new GetObjectCommand({
       Bucket: this.bucket,
@@ -100,6 +76,34 @@ export class S3Service {
     });
 
     return getSignedUrl(this.s3, command, { expiresIn: 3600 }); // 1 hour
+  }
+
+  async streamUrlToS3(url: string, video_id: string, extension: string): Promise<string> {
+    const prefix = 'uploads'
+    const res = await fetch(url);
+    if (!res.ok || !res.body) throw new Error(`Download failed: ${res.status}`);
+
+    // Convert WHATWG ReadableStream -> Node Readable for AWS SDK
+    const bodyStream = Readable.fromWeb(res.body as any);
+
+    // const datePrefix = new Date().toISOString().slice(0, 10);
+    const key = `uploads/wowza/${video_id}.${extension}`;
+
+    const uploader = new Upload({
+      client: this.s3,
+      params: {
+        Bucket: this.bucket,
+        Key: key,
+        Body: bodyStream,
+        ContentType: 'video/mp4',
+      },
+      queueSize: 4, // parallel parts
+      partSize: 8 * 1024 * 1024, // 8 MB parts
+      leavePartsOnError: false,
+    });
+
+    await uploader.done();
+    return key;
   }
 
   public async generateUploadUrl(
