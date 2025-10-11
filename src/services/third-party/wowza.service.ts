@@ -99,4 +99,10 @@ export class WowzaService {
         const video = data.video.encodings.filter(e => e.video_container == 'mp4').sort((a, b) => a < b ? -1 : a > b ? 1 : 0)[0];
         return { download_url: video.video_file_url, video_id: data.video.id, extension: video.video_container };
     }
+
+    async deleteRecording(recordingId: string): Promise<void> {
+        await firstValueFrom(this.http.delete(`${this.wowzaUrl}/videos/${recordingId}`, {
+            headers: { Authorization: `Bearer ${this.wowzaToken}` }
+        }));
+    }
 }

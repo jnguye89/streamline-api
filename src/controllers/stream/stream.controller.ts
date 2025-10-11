@@ -124,6 +124,7 @@ export default class StreamController {
             user: 'auth0|68d9e24125d121501c3a47f7',
             videoPath: s3Key
         });
+        await this.wowzaService.deleteRecording(recordingId);
         return { ok: true, recordingId, s3Key };
     }
 }
