@@ -1,5 +1,6 @@
 import { AutoMap } from "@automapper/classes";
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { User } from "./user.entity";
 
 @Entity()
 export class Stream {
@@ -27,25 +28,21 @@ export class Stream {
     @Column({ length: 10 })
     streamName: string;
 
+    @OneToOne(() => User, (u) => u.stream, {
+        onDelete: "RESTRICT",
+        onUpdate: "CASCADE",
+        eager: true
+    })
+    @JoinColumn({
+        name: "user_id",                       // FK column on Stream
+        referencedColumnName: "auth0UserId",   // points to User.auth0UserId
+    })
+    @AutoMap()
+    user!: User;
+
     @Index()
     @Column({ length: 16 })
     phase!: 'idle' | 'starting' | 'ready' | 'publishing' | 'ended' | 'error';
-
-    /** raw last known wowza state (optional) */
-    @Column({ nullable: true })
-    lastWowzaState?: string;
-
-    /** human-readable error if any */
-    @Column({ nullable: true })
-    errorMessage?: string;
-
-    /** avoid duplicate starts; set true while polling */
-    @Index()
-    @Column({ default: false })
-    isProvisioning!: boolean;
-
-    @Column({ type: 'varchar', length: 255, nullable: true })
-    provisonedUser: string | null;
 
     @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
     createdAt!: Date;

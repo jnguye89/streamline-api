@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Sse, MessageEvent, Put, Req } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Sse, MessageEvent, Put, Req, ConflictException } from "@nestjs/common";
 import { interval, map, Observable } from "rxjs";
 import { User } from "src/auth/user.decorator";
 import { UserDto } from "src/dto/user.dto";
@@ -33,6 +33,7 @@ export default class StreamController {
     /** Start (or reuse) and begin pushing updates */
     @Post('ensure-ready')
     async ensureReady(@User() user: UserDto, @Body() dto: { broadcastLocation: string; }) {
+        console.log('ensure ready controller');
         const s = await this.streamService.ensureReady(dto.broadcastLocation, user.userId);
         return s;
     }
@@ -41,7 +42,7 @@ export default class StreamController {
     @Get(':id')
     async get(@Param('id') id: string) {
         const s = await this.streamService.get(Number(id));
-        return { id: s.id, phase: s.phase, wowzaState: s.lastWowzaState, errorMessage: s.errorMessage };
+        return { id: s.id, phase: s.phase };
     }
 
     /** Server-Sent Events stream */
@@ -61,7 +62,8 @@ export default class StreamController {
 
     @Put(':id/stop')
     async stop(@Param('id') id: number) {
-        await this.streamService.updateStreamPhase(id, false)
+        const wowzaId = await this.streamService.updateStreamPhase(id, false);
+        await this.streamService.stopLiveStream(wowzaId);
     }
 
     @Put(':id/start')
@@ -99,31 +101,31 @@ export default class StreamController {
     @Post('webhook')
     @Public()
     async handleWowzaWebhook(@Body() payload: WowzaEventDto) {
-        // Optional: verify a shared secret signature here if configured.
-
-        // Accept a few possible shapes:
-        // { type: 'recording.completed', data: { recording_id, ... } }
-        // or { event_type: 'recording.completed', recording_id: '...' }
-        // or custom payload mapping to your workflow.
         const type = payload?.event_type;
         const recordingId = payload.object_id;
-        console.log(type);
 
         // Ignore unrelated events
         if (type !== 'video.ready') return { ok: true, ignored: true };
 
+        const wowzaStreamId = payload.payload.origin.id;
+        const stream = (await this.streamService.getByStreamId(wowzaStreamId));
+        if (!stream) throw new Error('No user tied to this stream');
+        const user = stream?.user.auth0UserId;
         if (!recordingId) throw new Error('No recording_id in webhook payload');
 
         // 1) Get Wowza recording (download_url + file_name)
         const { download_url, video_id, extension } = await this.wowzaService.getRecording(recordingId);
         // 2) Stream directly to S3
         const s3Key = await this.s3.streamUrlToS3(download_url, video_id, extension);
+        const video = await this.videoService.getVideoByPath(s3Key);
+
+        if (!!video) throw new ConflictException("Video with the same name already exist");
         // 3) Persist VOD metadata to your DB here (duration, owner, s3Key, etc.)
-        // TODO: assign it to the correct user
         this.videoService.uploadVideoToDb({
-            user: 'auth0|68d9e24125d121501c3a47f7',
+            user: user!,
             videoPath: s3Key
         });
+
         await this.wowzaService.deleteRecording(recordingId);
         return { ok: true, recordingId, s3Key };
     }

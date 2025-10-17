@@ -8,4 +8,5 @@ export class CreateLiveStreamDto {
   transcoder_type?: 'transcoded' | 'passthrough' = 'transcoded';
   delivery_method?: 'push' | 'pull' | 'cdn' = 'push'; // WebRTC requires "push"
   description?: string;
+  recording: boolean = true;
 }

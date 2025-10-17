@@ -1,6 +1,7 @@
 import { AutoMap } from "@automapper/classes";
-import { Column, Entity, OneToMany, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, OneToMany, OneToOne, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
 import { Thread } from "./thread.entity";
+import { Stream } from "./stream.entity";
 
 @Entity()
 export class User {
@@ -18,4 +19,8 @@ export class User {
 
     @OneToMany(() => Thread, (t) => t.user)
     threads!: Thread[];
+    
+    @OneToOne(() => Stream, (s) => s.user)
+    @AutoMap()
+    stream!: Stream | null;
 }

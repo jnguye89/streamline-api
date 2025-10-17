@@ -9,7 +9,7 @@ export class VideoService {
   constructor(
     private s3Service: S3Service,
     private videoRepository: VideoRepository,
-  ) {}
+  ) { }
 
   async getSignedUrl(key: string): Promise<string> {
     return this.s3Service.getSignedUrl(key);
@@ -23,6 +23,10 @@ export class VideoService {
         return { ...video, videoPath: url } as Video;
       }),
     );
+  }
+
+  async getVideoByPath(videoPath: string): Promise<VideoDto> {
+    return await this.videoRepository.findByVideoPath(videoPath);
   }
 
   async getDbVideosByUserId(userId: string): Promise<VideoDto[]> {

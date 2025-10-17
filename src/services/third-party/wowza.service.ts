@@ -1,5 +1,6 @@
 import { HttpService } from "@nestjs/axios";
-import { HttpException, Injectable } from "@nestjs/common";
+import { HttpException, Injectable, NotFoundException } from "@nestjs/common";
+import { ExceptionsHandler } from "@nestjs/core/exceptions/exceptions-handler";
 import { AxiosError } from "axios";
 import { firstValueFrom } from "rxjs";
 import { StreamDto } from "src/dto/stream.dto";
@@ -16,27 +17,20 @@ export class WowzaService {
 
     constructor(private http: HttpService, private streamRepo: StreamRepository) { }
 
-    public async createStream(): Promise<StreamDto> {
+    public async createStream(userId: string, broadcastLocation: string = 'us_west_oregon'): Promise<LiveStreamResponse> {
         const payload: { live_stream: CreateLiveStreamDto } = {
             live_stream: new CreateLiveStreamDto()
         }
+
+        payload.live_stream.name = userId;
+
         try {
             const { data } = await firstValueFrom(
                 this.http.post<LiveStreamResponse>(`${this.wowzaUrl}/live_streams`, payload, {
                     headers: { Authorization: `Bearer ${this.wowzaToken}` },
                 },),
             );
-
-            return {
-                wowzaId: data.live_stream.id,
-                broadcastLocation: data.live_stream.broadcast_location,
-                applicationName: data.live_stream.source_connection_information?.application_name,
-                wssStreamUrl: data.live_stream.source_connection_information?.sdp_url,
-                streamName: data.live_stream.source_connection_information?.stream_name
-            } as StreamDto;
-
-
-            // return await this.streamRepo.create(streamDto);
+            return data;
         } catch (err) {
             const e = err as AxiosError<any>;
             // Wowza returns 401 (auth) and 422 (validation) on create
@@ -53,6 +47,12 @@ export class WowzaService {
     // NB: set baseURL + Authorization header in AxiosModule.forRoot
     async startLiveStream(wowzaId: string) {
         await firstValueFrom(this.http.put(`${this.wowzaUrl}/live_streams/${wowzaId}/start`, null, {
+            headers: { Authorization: `Bearer ${this.wowzaToken}` }
+        }));
+    }
+
+    async stopLiveStream(wowzaId: string) {
+        await firstValueFrom(this.http.put(`${this.wowzaUrl}/live_streams/${wowzaId}/stop`, null, {
             headers: { Authorization: `Bearer ${this.wowzaToken}` }
         }));
     }
@@ -97,6 +97,7 @@ export class WowzaService {
         }))
 
         const video = data.video.encodings.filter(e => e.video_container == 'mp4').sort((a, b) => a < b ? -1 : a > b ? 1 : 0)[0];
+        if (!video.video_file_url) throw new NotFoundException("Missing vide url");
         return { download_url: video.video_file_url, video_id: data.video.id, extension: video.video_container };
     }
 

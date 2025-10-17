@@ -61,7 +61,7 @@ export class PublisherPresenceService {
 
         if (noPublishers) {
             // Optional: double-check against Wowza bits_in_rate > 0 if you want
-            await this.repo.update({ id: streamId }, { phase: 'ready', provisonedUser: null });
+            // await this.repo.update({ id: streamId }, { phase: 'ready', provisonedUser: null });
         }
     }
 }

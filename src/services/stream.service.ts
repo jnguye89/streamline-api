@@ -24,77 +24,54 @@ export class StreamService {
 
     /** Return an existing ready/starting stream OR start one and begin polling */
     async ensureReady(broadcastLocation: string, user: string): Promise<Stream> {
-        // 1) Already ready?
-        const ready = await this.repo.find({
-            where: { broadcastLocation, phase: 'ready', provisonedUser: IsNull() },
-            order: { updatedAt: 'DESC' },
-        });
-        if (ready.length > 0) {
-            for (const r of ready) {
-                const stream = await this.wowza.getLiveStream(r.wowzaId);
-                if (await this.wowza.isReadyState(stream)) {
-                    const newStream = this.repo.save({
-                        ...r,
-                        provisonedUser: user
-                    })
-                    return newStream;
-                }
-                else {
-                    this.repo.save({
-                        ...r,
-                        phase: 'idle',
-                        provisonedUser: null
-                    })
-                }
+        let stream = await this.repo.findOne({
+            where: {
+                user: { auth0UserId: user }
             }
-        }
+        });
 
-        // 2) Start if none ready
-        const idle = await this.repo.find({
-            where: { broadcastLocation, phase: 'idle', isProvisioning: false },
-            order: { updatedAt: 'DESC' },
-        });
-        let newStream: Stream;
-        if (idle.length > 0) {
-            const stream = await this.wowza.getLiveStream(idle[0].wowzaId);
-            if (stream.live_stream.state === 'started') {
-                const entity = idle[0];
-                entity.phase = 'ready';
-                entity.provisonedUser = user;
-                await this.repo.save(entity);
-                return entity;
-            }
-            newStream = idle[0];
-            newStream.isProvisioning = true;
-            newStream.provisonedUser = user;
-            newStream = await this.repo.save(newStream);
-        } else {
-            let streamDto = await this.wowza.createStream();
-            newStream = await this.repo.save({
-                wowzaId: streamDto.wowzaId,
-                broadcastLocation: streamDto.broadcastLocation,
+        console.log('stream from database: ', stream);
+
+        if (!stream) {
+            let streamDto = await this.wowza.createStream(user, broadcastLocation);
+            stream = await this.repo.save({
+                wowzaId: streamDto.live_stream.id,
+                broadcastLocation: streamDto.live_stream.broadcast_location,
+                user: { auth0UserId: user },
                 phase: 'idle',
-                isProvisioning: true,
-                wssStreamUrl: streamDto.wssStreamUrl,
-                applicationName: streamDto.applicationName,
-                provisonedUser: user,
-                streamName: streamDto.streamName
+                wssStreamUrl: streamDto.live_stream.source_connection_information?.sdp_url,
+                applicationName: streamDto.live_stream.source_connection_information?.application_name,
+                streamName: streamDto.live_stream.source_connection_information?.stream_name
             });
         }
 
-        // 4) Fire-and-forget: start and poll
-        this.startAndPoll(newStream.id, newStream.wowzaId).catch(async (err) => {
-            await this.setPhase(newStream.id, 'error', undefined, String(err?.message ?? err));
-        });
-        return newStream;
+        console.log('stream from database, created if null: ', stream);
+
+        const streamStatus = await this.wowza.getLiveStream(stream.wowzaId);
+        console.log('stream status from wowza: ', streamStatus);
+        const isReadyState = await this.wowza.isReadyState(streamStatus);
+        console.log('stream status is ready: ', isReadyState);
+        if (!isReadyState) {
+            console.log('polling until ready');
+            this.startAndPoll(stream.id, stream.wowzaId).catch(async (err) => {
+                await this.setPhase(stream.id, 'error', undefined, String(err?.message ?? err));
+            });
+        }
+
+        return stream;
+    }
+
+    async stopLiveStream(wowzaId: string) {
+        console.log('stopping live stream in wowza');
+        await this.wowza.stopLiveStream(wowzaId);
     }
 
     @Cron('*/10 * * * *') // every 1 min
     async cleanupStreams() {
         const streams = await this.repo.find({
             where: [
-                { isProvisioning: true },
-                { provisonedUser: Not(IsNull()) },
+                // { isProvisioning: true },
+                // { provisonedUser: Not(IsNull())/ },
             ],
         });
         for (var stream of streams) {
@@ -102,7 +79,7 @@ export class StreamService {
             switch (liveStream.live_stream.state) {
                 case 'stopped':
                     stream.phase = 'idle';
-                    stream.provisonedUser = null;
+                    // stream.provisonedUser = null;
                     break;
                 case 'starting':
                     break;
@@ -138,7 +115,7 @@ export class StreamService {
 
             if (await this.wowza.isReadyState(ls)) {
                 await this.setPhase(id, 'ready', wowzaState);
-                await this.repo.update({ id }, { isProvisioning: false });
+                // await this.repo.update({ id }, { isProvisioning: false });
                 return;
             }
 
@@ -148,17 +125,17 @@ export class StreamService {
         }
 
         await this.setPhase(id, 'error', undefined, 'Timed out waiting for Wowza to start.');
-        await this.repo.update({ id }, { isProvisioning: false });
+        // await this.repo.update({ id }, { isProvisioning: false });
     }
 
     private async setPhase(id: number, phase: 'starting' | 'ready' | 'error', wowzaState?: string, errorMessage?: string) {
-        await this.repo.update({ id }, { phase, lastWowzaState: wowzaState, errorMessage });
+        await this.repo.update({ id }, { phase });
         this.events.emit({ id, phase, wowzaState, errorMessage });
     }
 
     /** Optional: allow UI to cancel if user backs out before ready */
     async cancel(id: number) {
-        await this.repo.update({ id }, { phase: 'ended', isProvisioning: false });
+        // await this.repo.update({ id }, { phase: 'ended', isProvisioning: false });
         this.events.emit({ id, phase: 'ended' });
         this.events.complete(id);
     }
@@ -167,7 +144,15 @@ export class StreamService {
         return this.repo.findOneByOrFail({ id });
     }
 
-    async updateStreamPhase(id: number, isStarting: boolean): Promise<void> {
+    async getByStreamId(wowzaId: string): Promise<Stream | null> {
+        return await this.repo.findOne({
+            where: {
+                wowzaId
+            }
+        })
+    }
+
+    async updateStreamPhase(id: number, isStarting: boolean): Promise<string> {
         var entity = await this.repo.findOne({
             where: {
                 id
@@ -176,13 +161,14 @@ export class StreamService {
         if (entity == null) throw new NotFoundException();
         entity.phase = isStarting ? "publishing" : "ready";
         await this.repo.save(entity);
+        return entity.wowzaId;
     }
 
     async terminate(id: number): Promise<void> {
         var entity = await this.repo.findOne({ where: { id } });
         if (entity == null) throw new NotFoundException();
         entity.phase = "ready";
-        entity.provisonedUser = null;
+        // entity.provisonedUser = null;
         await this.repo.save(entity);
     }
 

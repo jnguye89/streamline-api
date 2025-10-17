@@ -11,7 +11,7 @@ export class VideoRepository {
   constructor(
     @InjectMapper() private readonly mapper: Mapper,
     @InjectRepository(Video) private readonly videoRepo: Repository<Video>,
-  ) {}
+  ) { }
 
   async create(videoDto: VideoDto): Promise<VideoDto> {
     // make sure it doesn't already exist
@@ -29,6 +29,14 @@ export class VideoRepository {
       this.mapper.map(videoDto, VideoDto, Video),
     );
     return this.mapper.map(await this.videoRepo.save(video), Video, VideoDto);
+  }
+
+  async findByVideoPath(path: string): Promise<VideoDto> {
+    return this.mapper.map(await this.videoRepo.findOne({
+      where: {
+        videoPath: path
+      }
+    }), Video, VideoDto)
   }
 
   async findAll(): Promise<VideoDto[]> {
