@@ -8,8 +8,6 @@ export class LogService {
     constructor(@InjectRepository(ErrorLog) private repo: Repository<ErrorLog>) { }
 
     async insertLog(message: string, errorSource?: string | null) {
-        await this.repo.create({
-            message, errorSource
-        })
+        await this.repo.save({ message, errorSource });
     }
 }
