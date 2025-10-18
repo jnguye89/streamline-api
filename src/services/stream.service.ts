@@ -9,10 +9,17 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Mapper } from "@automapper/core";
 import { InjectMapper } from "@automapper/nestjs";
 import { Cron } from "@nestjs/schedule";
+import { LogService } from "./log.service";
 
 @Injectable()
 export class StreamService {
-    constructor(@InjectMapper() private readonly mapper: Mapper, private streamRepo: StreamRepository, @InjectRepository(Stream) private repo: Repository<Stream>, private wowza: WowzaService, private events: StreamsEvents) { }
+    constructor(
+        @InjectMapper() private readonly mapper: Mapper,
+        private streamRepo: StreamRepository,
+        @InjectRepository(Stream) private repo: Repository<Stream>,
+        private wowza: WowzaService, private events: StreamsEvents,
+        private logService: LogService
+    ) { }
 
     async findAll(): Promise<StreamDto[]> {
         return await this.streamRepo.findAll();
@@ -30,8 +37,12 @@ export class StreamService {
             }
         });
 
+        this.logService.insertLog(`get stream result: ${stream}.`, `streamservice.ensureready`);
+
         if (!stream) {
+            this.logService.insertLog(`no stream found, creating in wowza`, `streamservice.ensureready`);
             let streamDto = await this.wowza.createStream(user, broadcastLocation);
+            this.logService.insertLog(`stream response from wowza: ${streamDto}`, `streamservice.ensureready`);
             stream = await this.repo.save({
                 wowzaId: streamDto.live_stream.id,
                 broadcastLocation: streamDto.live_stream.broadcast_location,
@@ -41,11 +52,14 @@ export class StreamService {
                 applicationName: streamDto.live_stream.source_connection_information?.application_name,
                 streamName: streamDto.live_stream.source_connection_information?.stream_name
             });
+            this.logService.insertLog(`stream saved to db: ${stream}`, `streamservice.ensureready`);
         }
 
+        this.logService.insertLog(`start stream with wowza if not already startes`, `streamservice.ensureready`);
         const streamStatus = await this.wowza.getLiveStream(stream.wowzaId);
         const isReadyState = await this.wowza.isReadyState(streamStatus);
         if (!isReadyState) {
+            this.logService.insertLog(`not in ready state, sending to Wowza to start`, `streamservice.ensureready`);
             this.startAndPoll(stream.id, stream.wowzaId).catch(async (err) => {
                 await this.setPhase(stream.id, 'error', undefined, String(err?.message ?? err));
             });
