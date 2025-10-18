@@ -42,7 +42,7 @@ export class StreamService {
         if (!stream) {
             this.logService.insertLog(`no stream found, creating in wowza`, `streamservice.ensureready`);
             let streamDto = await this.wowza.createStream(user, broadcastLocation);
-            this.logService.insertLog(`stream response from wowza: ${streamDto}`, `streamservice.ensureready`);
+            this.logService.insertLog(`stream response from wowza: ${JSON.stringify(streamDto)}`, `streamservice.ensureready`);
             stream = await this.repo.save({
                 wowzaId: streamDto.live_stream.id,
                 broadcastLocation: streamDto.live_stream.broadcast_location,
