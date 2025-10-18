@@ -11,19 +11,23 @@ import { v4 as uuidv4 } from 'uuid';
 import mime from 'mime-types'; // not 'mime'
 import { Readable } from 'stream';
 import { Upload } from '@aws-sdk/lib-storage';
+import { LogService } from '../log.service';
 
 @Injectable()
 export class S3Service {
   private s3: S3Client;
   private readonly bucket = process.env.AWS_S3_BUCKET;
 
-  constructor() {
+  constructor(private logService: LogService) {
     this.s3 = new S3Client({ region: process.env.AWS_REGION });
   }
 
   async uploadAudioToS3(file: Express.Multer.File): Promise<string> {
     const extension = mime.extension(file.mimetype as string);
-    if (!extension) throw new Error('Invalid mimetype');
+    if (!extension) {
+      this.logService.insertLog('Invalid mimetype', 's3Service,uploadAudioToS3');
+      throw new Error('Invalid mimetype');
+    }
 
     const key = `audio/${uuidv4()}.${extension}`;
 
@@ -65,6 +69,7 @@ export class S3Service {
       return signedUrls;
     } catch (error) {
       console.error('Error listing files from S3:', error);
+      this.logService.insertLog(error, 's3Service.listFiles');
       throw error;
     }
   }
@@ -81,7 +86,10 @@ export class S3Service {
   async streamUrlToS3(url: string, video_id: string, extension: string): Promise<string> {
     const prefix = 'uploads'
     const res = await fetch(url);
-    if (!res.ok || !res.body) throw new Error(`Download failed: ${res.status}`);
+    if (!res.ok || !res.body) {
+      this.logService.insertLog(`Download failed: ${res.status}`, 's3Service.streamUrlToS3');
+      throw new Error(`Download failed: ${res.status}`);
+    }
 
     // Convert WHATWG ReadableStream -> Node Readable for AWS SDK
     const bodyStream = Readable.fromWeb(res.body as any);

@@ -47,6 +47,8 @@ import { UserRepository } from './repositories/user.repository';
 import { UserService } from './services/user.service';
 import { Auth0Service } from './services/third-party/auth0.service';
 import { UserProfile } from './mappers/user.mapper';
+import { ErrorLog } from './entity/error-log';
+import { LogService } from './services/log.service';
 
 @Module({
   imports: [
@@ -74,7 +76,7 @@ import { UserProfile } from './mappers/user.mapper';
       autoLoadEntities: true,
       synchronize: true, // turn off in prod
     }),
-    TypeOrmModule.forFeature([Video, Audio, User_Integration, Stream, Thread, User]),
+    TypeOrmModule.forFeature([Video, Audio, User_Integration, Stream, Thread, User, ErrorLog]),
   ],
   controllers: [
     AppController,
@@ -111,7 +113,8 @@ import { UserProfile } from './mappers/user.mapper';
     ThreadRepository,
     UserRepository,
     UserService,
-    Auth0Service
+    Auth0Service,
+    LogService
   ],
 })
 export class AppModule { }

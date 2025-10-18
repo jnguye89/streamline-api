@@ -12,6 +12,7 @@ import { WowzaEventDto } from "src/dto/wowza/wowza-event.dto";
 import { WowzaService } from "src/services/third-party/wowza.service";
 import { S3Service } from "src/services/third-party/s3.service";
 import { VideoService } from "src/services/video.service";
+import { LogService } from "src/services/log.service";
 
 @Controller('stream')
 export default class StreamController {
@@ -21,7 +22,8 @@ export default class StreamController {
         private publisherPresence: PublisherPresenceService,
         private wowzaService: WowzaService,
         private s3: S3Service,
-        private videoService: VideoService
+        private videoService: VideoService,
+        private logService: LogService
     ) { }
 
     @Get()
@@ -109,17 +111,26 @@ export default class StreamController {
 
         const wowzaStreamId = payload.payload.origin.id;
         const stream = (await this.streamService.getByStreamId(wowzaStreamId));
-        if (!stream) throw new Error('No user tied to this stream');
+        if (!stream) {
+            this.logService.insertLog('No user tied to this stream', 'streamController:webhook');
+            return { ok: true, ignored: true };
+        }
         const user = stream?.user.auth0UserId;
-        if (!recordingId) throw new Error('No recording_id in webhook payload');
+        if (!recordingId) {
+            this.logService.insertLog('No recording_id in webhook payload', 'streamController:webhook');
+            return { ok: true, ignored: true };
+        }
 
         // 1) Get Wowza recording (download_url + file_name)
         const { download_url, video_id, extension } = await this.wowzaService.getRecording(recordingId);
         // 2) Stream directly to S3
+        const key = `uploads/wowza/${video_id}.${extension}`;
+        const video = await this.videoService.getVideoByPath(key);
+        if (!!video) {
+            this.logService.insertLog("Video with the same name already exist", 'streamController:webhook');
+            return { ok: true, ignored: true };
+        }
         const s3Key = await this.s3.streamUrlToS3(download_url, video_id, extension);
-        const video = await this.videoService.getVideoByPath(s3Key);
-
-        if (!!video) throw new ConflictException("Video with the same name already exist");
         // 3) Persist VOD metadata to your DB here (duration, owner, s3Key, etc.)
         this.videoService.uploadVideoToDb({
             user: user!,
