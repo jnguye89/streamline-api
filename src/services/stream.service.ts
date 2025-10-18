@@ -43,15 +43,21 @@ export class StreamService {
             this.logService.insertLog(`no stream found, creating in wowza`, `streamservice.ensureready`);
             let streamDto = await this.wowza.createStream(user, broadcastLocation);
             this.logService.insertLog(`stream response from wowza: ${JSON.stringify(streamDto)}`, `streamservice.ensureready`);
-            stream = await this.repo.save({
-                wowzaId: streamDto.live_stream.id,
-                broadcastLocation: streamDto.live_stream.broadcast_location,
-                user: { auth0UserId: user },
-                phase: 'idle',
-                wssStreamUrl: streamDto.live_stream.source_connection_information?.sdp_url,
-                applicationName: streamDto.live_stream.source_connection_information?.application_name,
-                streamName: streamDto.live_stream.source_connection_information?.stream_name
-            });
+            try {
+                stream = await this.repo.save({
+                    wowzaId: streamDto.live_stream.id,
+                    broadcastLocation: streamDto.live_stream.broadcast_location,
+                    user: { auth0UserId: user },
+                    phase: 'idle',
+                    wssStreamUrl: streamDto.live_stream.source_connection_information?.sdp_url,
+                    applicationName: streamDto.live_stream.source_connection_information?.application_name,
+                    streamName: streamDto.live_stream.source_connection_information?.stream_name
+                });
+            }
+            catch (ex) {
+                this.logService.insertLog(ex, `streamservice.ensureready`);
+                throw new Error(ex);
+            }
             this.logService.insertLog(`stream saved to db: ${stream}`, `streamservice.ensureready`);
         }
 
