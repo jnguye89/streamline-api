@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { StreamDto } from "src/dto/stream.dto";
 import { Stream } from "src/entity/stream.entity";
 import { StreamRepository } from "src/repositories/stream.repository";
-import { In, IsNull, Not, Repository } from "typeorm";
+import { Repository } from "typeorm";
 import { WowzaService } from "./third-party/wowza.service";
 import { StreamsEvents } from "./third-party/streams.events";
 import { InjectRepository } from "@nestjs/typeorm";

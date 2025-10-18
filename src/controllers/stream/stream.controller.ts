@@ -88,6 +88,8 @@ export default class StreamController {
     @Post(':id/publish/leave')
     async leave(@Param('id') id: number, @Body() body: { sessionId: string }) {
         await this.publisherPresence.leave(id, body.sessionId, 'beacon');
+        const wowza = await this.streamService.get(id);
+        await this.wowzaService.stopLiveStream(wowza.wowzaId);
         return { ok: true };
     }
 
