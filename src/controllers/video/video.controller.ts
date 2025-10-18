@@ -2,25 +2,20 @@ import {
   Controller,
   Get,
   Post,
-  UseInterceptors,
-  UploadedFile,
   Param,
   Body,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
 import { Public } from './../../auth/public.decorator';
 import { VideoService } from 'src/services/video.service';
-import { User } from 'src/auth/user.decorator';
 import { VideoDto } from 'src/dto/video.dto';
-import { UserDto } from 'src/dto/user.dto';
 import { IvsService } from 'src/services/third-party/ivs.services';
 
 @Controller('video')
 export class VideoController {
   constructor(
     private videoService: VideoService,
-    private ivsService: IvsService,
-  ) {}
+    private ivsService: IvsService
+  ) { }
 
   @Get()
   @Public()

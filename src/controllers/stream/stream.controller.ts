@@ -35,7 +35,6 @@ export default class StreamController {
     /** Start (or reuse) and begin pushing updates */
     @Post('ensure-ready')
     async ensureReady(@User() user: UserDto, @Body() dto: { broadcastLocation: string; }) {
-        console.log('ensure ready controller');
         const s = await this.streamService.ensureReady(dto.broadcastLocation, user.userId);
         return s;
     }
@@ -88,17 +87,9 @@ export default class StreamController {
     // Beacon fallback on pagehide
     @Post(':id/publish/leave')
     async leave(@Param('id') id: number, @Body() body: { sessionId: string }) {
-        console.log('publish/leave');
         await this.publisherPresence.leave(id, body.sessionId, 'beacon');
         return { ok: true };
     }
-
-    @Post('test')
-    @Public()
-    logWebhook(@Body() test: any) {
-        console.log(test)
-    }
-
 
     @Post('webhook')
     @Public()
@@ -112,12 +103,12 @@ export default class StreamController {
         const wowzaStreamId = payload.payload.origin.id;
         const stream = (await this.streamService.getByStreamId(wowzaStreamId));
         if (!stream) {
-            this.logService.insertLog('No user tied to this stream', 'streamController:webhook');
+            await this.logService.insertLog('No user tied to this stream', 'streamController:webhook');
             return { ok: true, ignored: true };
         }
         const user = stream?.user.auth0UserId;
         if (!recordingId) {
-            this.logService.insertLog('No recording_id in webhook payload', 'streamController:webhook');
+            await this.logService.insertLog('No recording_id in webhook payload', 'streamController:webhook');
             return { ok: true, ignored: true };
         }
 
@@ -127,7 +118,7 @@ export default class StreamController {
         const key = `uploads/wowza/${video_id}.${extension}`;
         const video = await this.videoService.getVideoByPath(key);
         if (!!video) {
-            this.logService.insertLog("Video with the same name already exist", 'streamController:webhook');
+            await this.logService.insertLog("Video with the same name already exist", 'streamController:webhook');
             return { ok: true, ignored: true };
         }
         const s3Key = await this.s3.streamUrlToS3(download_url, video_id, extension);

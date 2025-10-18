@@ -47,7 +47,7 @@ import { UserRepository } from './repositories/user.repository';
 import { UserService } from './services/user.service';
 import { Auth0Service } from './services/third-party/auth0.service';
 import { UserProfile } from './mappers/user.mapper';
-import { ErrorLog } from './entity/error-log';
+import { ErrorLog } from './entity/error-log.entity';
 import { LogService } from './services/log.service';
 
 @Module({

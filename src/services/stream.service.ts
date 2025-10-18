@@ -30,8 +30,6 @@ export class StreamService {
             }
         });
 
-        console.log('stream from database: ', stream);
-
         if (!stream) {
             let streamDto = await this.wowza.createStream(user, broadcastLocation);
             stream = await this.repo.save({
@@ -45,14 +43,9 @@ export class StreamService {
             });
         }
 
-        console.log('stream from database, created if null: ', stream);
-
         const streamStatus = await this.wowza.getLiveStream(stream.wowzaId);
-        console.log('stream status from wowza: ', streamStatus);
         const isReadyState = await this.wowza.isReadyState(streamStatus);
-        console.log('stream status is ready: ', isReadyState);
         if (!isReadyState) {
-            console.log('polling until ready');
             this.startAndPoll(stream.id, stream.wowzaId).catch(async (err) => {
                 await this.setPhase(stream.id, 'error', undefined, String(err?.message ?? err));
             });
@@ -62,7 +55,6 @@ export class StreamService {
     }
 
     async stopLiveStream(wowzaId: string) {
-        console.log('stopping live stream in wowza');
         await this.wowza.stopLiveStream(wowzaId);
     }
 
