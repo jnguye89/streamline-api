@@ -38,4 +38,9 @@ export class UserRepository {
 
         return this.userRepo.save(entity);
     }
+
+    async getUsers() {
+        const users = await this.userRepo.find();
+        return this.mapper.mapArray(users, User, Auth0UserDto)
+    }
 }

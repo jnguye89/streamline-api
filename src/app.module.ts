@@ -49,6 +49,9 @@ import { Auth0Service } from './services/third-party/auth0.service';
 import { UserProfile } from './mappers/user.mapper';
 import { ErrorLog } from './entity/error-log.entity';
 import { LogService } from './services/log.service';
+import { CallController } from './controllers/call/call.controller';
+import { AgoraTokenService } from './services/third-party/agora/agora-token.service';
+import { UserController } from './controllers/user.controller';
 
 @Module({
   imports: [
@@ -84,7 +87,9 @@ import { LogService } from './services/log.service';
     StreamController,
     ListenController,
     UserIntegrationController,
-    ThreadController
+    ThreadController,
+    CallController,
+    UserController
   ],
   providers: [
     VoximplantService,
@@ -114,7 +119,8 @@ import { LogService } from './services/log.service';
     UserRepository,
     UserService,
     Auth0Service,
-    LogService
+    LogService,
+    AgoraTokenService
   ],
 })
 export class AppModule { }
