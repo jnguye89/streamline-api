@@ -31,4 +31,8 @@ export class UserService {
     async getUsers(): Promise<Auth0UserDto[]> {
         return await this.userRepo.getUsers();
     }
+
+    async getAuth0User(auth0Id: string): Promise<Auth0UserDto> {
+        return await this.userRepo.getAuth0User(auth0Id);
+    }
 }

@@ -43,4 +43,14 @@ export class UserRepository {
         const users = await this.userRepo.find();
         return this.mapper.mapArray(users, User, Auth0UserDto)
     }
+
+    async getAuth0User(auth0Id: string): Promise<Auth0UserDto> {
+        const user = await this.userRepo.findOne({
+            where: {
+                auth0UserId: auth0Id
+            }
+        })
+
+        return this.mapper.map(user, User, Auth0UserDto);
+    }
 }
