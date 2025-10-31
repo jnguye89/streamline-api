@@ -30,6 +30,10 @@ export class VideoProfile extends AutomapperProfile {
           (d) => d.videoPath,
           mapFrom((s) => s.videoPath),
         ),
+        forMember(
+          (d) => d.id,
+          mapFrom((s) => s.id),
+        ),
       );
       createMap(mapper, VideoDto, Video);
     };

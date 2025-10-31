@@ -5,4 +5,6 @@ export class VideoDto {
   user: string;
   @AutoMap()
   videoPath: string;
+  @AutoMap()
+  id?: number;
 }

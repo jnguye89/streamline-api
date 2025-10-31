@@ -20,7 +20,7 @@ export class VideoService {
     return Promise.all(
       videos.map(async (video) => {
         const url = await this.s3Service.getSignedUrl(video.videoPath);
-        return { ...video, videoPath: url } as Video;
+        return { ...video, videoPath: url } as VideoDto;
       }),
     );
   }
