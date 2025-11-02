@@ -10,6 +10,10 @@ export class User {
     auth0UserId: string;
 
     @AutoMap()
+    @Column({ name: "agora_user_id", type: "int" })
+    agoraUserId: number;
+
+    @AutoMap()
     @Column({ name: "username", type: "varchar", length: 256 })
     username: string;
 
@@ -19,7 +23,7 @@ export class User {
 
     @OneToMany(() => Thread, (t) => t.user)
     threads!: Thread[];
-    
+
     @OneToOne(() => Stream, (s) => s.user)
     @AutoMap()
     stream!: Stream | null;

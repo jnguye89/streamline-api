@@ -36,7 +36,6 @@ export class Auth0Service {
                 headers: { Authorization: `Bearer ${token}` },
             },
         ));
-        console.log(data);
 
         return {
             auth0UserId: data.user_id,

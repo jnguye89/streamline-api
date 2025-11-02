@@ -52,6 +52,9 @@ import { LogService } from './services/log.service';
 import { CallController } from './controllers/call/call.controller';
 import { AgoraTokenService } from './services/third-party/agora/agora-token.service';
 import { UserController } from './controllers/user.controller';
+import { AgoraRecordingService } from './services/third-party/agora/agora-recording.service';
+import { Podcast } from './entity/podcast.entity';
+import { PodcastRepository } from './repositories/podcast.repository';
 
 @Module({
   imports: [
@@ -79,7 +82,7 @@ import { UserController } from './controllers/user.controller';
       autoLoadEntities: true,
       synchronize: true, // turn off in prod
     }),
-    TypeOrmModule.forFeature([Video, Audio, User_Integration, Stream, Thread, User, ErrorLog]),
+    TypeOrmModule.forFeature([Video, Audio, User_Integration, Stream, Thread, User, ErrorLog, Podcast]),
   ],
   controllers: [
     AppController,
@@ -103,6 +106,7 @@ import { UserController } from './controllers/user.controller';
     StreamRepository,
     IvsService,
     AudioRepository,
+    PodcastRepository,
     AudioProfile,
     VideoProfile,
     StreamProfile,
@@ -120,7 +124,8 @@ import { UserController } from './controllers/user.controller';
     UserService,
     Auth0Service,
     LogService,
-    AgoraTokenService
+    AgoraTokenService,
+    AgoraRecordingService
   ],
 })
 export class AppModule { }

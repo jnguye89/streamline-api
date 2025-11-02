@@ -21,9 +21,11 @@ export class UserService {
 
     async createUser(auth0UserId: string): Promise<Auth0UserDto> {
         const username = (await this.auth0Service.getUser(auth0UserId)).username;
+        const agoraUserId = Math.floor(Math.random() * 100000000);
         const user: Auth0UserDto = {
             username,
-            auth0UserId
+            auth0UserId,
+            agoraUserId
         };
         return await this.userRepo.createUser(user);
     }
@@ -34,5 +36,9 @@ export class UserService {
 
     async getAuth0User(auth0Id: string): Promise<Auth0UserDto> {
         return await this.userRepo.getAuth0User(auth0Id);
+    }
+
+    async getAgoraUser(agoraId: number): Promise<Auth0UserDto> {
+        return await this.userRepo.getAgoraUser(agoraId);
     }
 }

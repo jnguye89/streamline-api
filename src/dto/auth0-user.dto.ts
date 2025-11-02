@@ -9,4 +9,7 @@ export class Auth0UserDto {
 
     @AutoMap()
     lastSyncedAt?: Date;
+
+    @AutoMap()
+    agoraUserId?: number;
 }

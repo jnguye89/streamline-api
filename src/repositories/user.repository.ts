@@ -21,7 +21,17 @@ export class UserRepository {
         return this.mapper.map(result, User, Auth0UserDto);
     }
 
+    async getAgoraUser(augoraId: number): Promise<Auth0UserDto> {
+        const result = await this.userRepo.findOne({
+            where: { agoraUserId: augoraId }
+        })
+
+        return this.mapper.map(result, User, Auth0UserDto);
+    }
+
     async createUser(user: Auth0UserDto): Promise<Auth0UserDto> {
+        const existingUser = this.getUser(user.auth0UserId);
+        if (!!existingUser) return existingUser;
         const entity = this.mapper.map(user, Auth0UserDto, User);
         entity.lastSyncedAt = new Date;
         const newUser = this.userRepo.create(entity);

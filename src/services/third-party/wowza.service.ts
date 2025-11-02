@@ -1,9 +1,7 @@
 import { HttpService } from "@nestjs/axios";
 import { HttpException, Injectable, NotFoundException } from "@nestjs/common";
-import { ExceptionsHandler } from "@nestjs/core/exceptions/exceptions-handler";
 import { AxiosError } from "axios";
 import { firstValueFrom } from "rxjs";
-import { StreamDto } from "src/dto/stream.dto";
 import { CreateLiveStreamDto } from "src/dto/wowza/create-live-stream.dto";
 import { LiveStreamResponse } from "src/dto/wowza/live-stream-response.dto";
 import { StreamStatusDto } from "src/dto/wowza/stream-status.dto";
