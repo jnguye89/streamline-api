@@ -9,7 +9,7 @@ export class Podcast {
     resourceId: string;
 
     @Column()
-    uid: number;
+    recordingUid: number;
 
     @Column({ length: 100, nullable: true })
     sid: string;

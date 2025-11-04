@@ -4,10 +4,11 @@ import { CreateAgoraTokenDto } from "src/dto/agora/agora-token.dto";
 import { UserDto } from "src/dto/user.dto";
 import { AgoraRecordingService } from "src/services/third-party/agora/agora-recording.service";
 import { AgoraTokenService } from "src/services/third-party/agora/agora-token.service";
+import { UserService } from "src/services/user.service";
 
 @Controller('call')
 export class CallController {
-    constructor(private agoraTokenService: AgoraTokenService, private agoraRecordingService: AgoraRecordingService) { }
+    constructor(private agoraTokenService: AgoraTokenService, private agoraRecordingService: AgoraRecordingService, private userService: UserService) { }
 
     @Post('agora/token')
     async create(@Body() dto: CreateAgoraTokenDto, @User() user: UserDto) {
@@ -18,10 +19,12 @@ export class CallController {
     }
 
     @Post('podcast/start')
-    async startPodcast(@Body() dto: { channelName: string }, @User() user: UserDto) {
+    async startPodcast(@Body() dto: { channelName: string, users: number[] }, @User() user: UserDto) {
         console.log('starting recording');
+        const userDto = await this.userService.getAuth0User(user.userId);
+        dto.users.push(userDto.agoraUserId!);
         await this.agoraRecordingService.getResourceId(dto.channelName, user.userId);
-        await this.agoraRecordingService.startRecording(dto.channelName);
+        await this.agoraRecordingService.startRecording(dto.channelName, dto.users);
     }
 
     @Post('podcast/stop')

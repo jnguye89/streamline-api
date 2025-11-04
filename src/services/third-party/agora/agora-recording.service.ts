@@ -39,7 +39,7 @@ export class AgoraRecordingService {
         // TODO: Add podcast status
         const dto = {
             resourceId: data.resourceId,
-            uid,
+            recordingUid: uid,
             auth0UserId: userId,
             channelName
         } as Podcast;
@@ -49,33 +49,47 @@ export class AgoraRecordingService {
         return data.resourceId;
     }
 
-    async startRecording(channelName: string) {
+    async startRecording(channelName: string, users: number[]) {
         const podcast = await this.podcastRepository.getPodcast(channelName);
+        // users.push(podcast.)
         const url = `${this.baseUrl}/${process.env.AGORA_APP_ID}/cloud_recording/resourceid/${encodeURIComponent(podcast.resourceId)}/mode/mix/start`;
-        const token = await this.agoraTokenService.createTokens(`${podcast.uid}`, podcast.channelName);
+        const token = await this.agoraTokenService.createTokens(`${podcast.recordingUid}`, podcast.channelName);
         const payload = {
             cname: channelName,
-            uid: `${podcast.uid}`,
+            uid: String(podcast.recordingUid),     // recorder UID
             clientRequest: {
                 token: token.rtcToken,
+
                 storageConfig: {
-                    vendor: 1,
-                    region: 2,
+                    vendor: 1,                         // 1 = AWS S3
+                    region: 2,                         // your numeric region
                     bucket: process.env.AWS_S3_BUCKET,
                     accessKey: process.env.AGORA_S3_ACCESS_KEY,
                     secretKey: process.env.AGORA_S3_SECRET,
-                    fileNamePrefix: ['uploads', 'agora']
+                    fileNamePrefix: ["uploads", "agora"]
                 },
+
+                // ✅ make sure we subscribe to ALL audio/video streams
                 recordingConfig: {
                     channelType: 0,
-                    // mode: 'mix',
-                    maxIdleTime: 120
+                    maxIdleTime: 120,
+                    subscribeAudioUids: ["#allstream#"],
+                    subscribeVideoUids: ["#allstream#"],
+                    transcodingConfig: {
+                        width: 1280,
+                        height: 720,
+                        fps: 15,
+                        bitrate: 1200,
+                        mixedVideoLayout: 1,
+                    },
                 },
+
                 recordingFileConfig: {
-                    avFileType: ["hls", "mp4"]
+                    avFileType: ["hls", "mp4"]         // mp4-only is not allowed
                 }
             }
-        }
+        };
+
         console.log('starting recording payload :', payload);
 
         const { data } = await firstValueFrom(this.http.post<{ sid: string }>(url,
@@ -101,7 +115,7 @@ export class AgoraRecordingService {
 
         const payload = {
             cname: channelName,
-            uid: `${podcast.uid}`,
+            uid: `${podcast.recordingUid}`,
             clientRequest: {}
         }
         console.log('stopping recording payload: ', payload);
@@ -122,4 +136,35 @@ export class AgoraRecordingService {
         console.log('creating s3 video record: ', videoDto);
         await this.videoRepository.create(videoDto);
     }
+
+    private getRecordingConfiguration(users: number[]): { uid: string, x_axis: number, y_axis: number, width: number, height: number }[] {
+        const count = users.length;
+        const configs = [] as { uid: string, x_axis: number, y_axis: number, width: number, height: number }[];
+
+        if (count === 1) {
+            configs.push({ uid: `${users[0]}`, x_axis: 0, y_axis: 0, width: 1, height: 1 });
+        } else if (count === 2) {
+            configs.push({ uid: `${users[0]}`, x_axis: 0, y_axis: 0, width: 0.5, height: 1 });
+            configs.push({ uid: `${users[1]}`, x_axis: 0.5, y_axis: 0, width: 0.5, height: 1 });
+        } else if (count === 3) {
+            configs.push({ uid: `${users[0]}`, x_axis: 0, y_axis: 0, width: 0.5, height: 0.5 });
+            configs.push({ uid: `${users[1]}`, x_axis: 0.5, y_axis: 0, width: 0.5, height: 0.5 });
+            configs.push({ uid: `${users[2]}`, x_axis: 0.25, y_axis: 0.5, width: 0.5, height: 0.5 });
+        } else {
+            // 4+ users: 2x2 grid
+            const grid = [
+                [0, 0],
+                [0.5, 0],
+                [0, 0.5],
+                [0.5, 0.5]
+            ];
+            for (let i = 0; i < Math.min(4, users.length); i++) {
+                const [x, y] = grid[i];
+                configs.push({ uid: `${users[i]}`, x_axis: x, y_axis: y, width: 0.5, height: 0.5 });
+            }
+        }
+        console.log('recording configs: ', configs);
+        return configs;
+    }
+
 }
