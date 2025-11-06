@@ -19,12 +19,10 @@ export class CallController {
     }
 
     @Post('podcast/start')
-    async startPodcast(@Body() dto: { channelName: string, users: number[] }, @User() user: UserDto) {
-        console.log('starting recording');
-        const userDto = await this.userService.getAuth0User(user.userId);
-        dto.users.push(userDto.agoraUserId!);
+    async startPodcast(@Body() dto: { channelName: string }, @User() user: UserDto) {
+        // console.log('starting recording');
         await this.agoraRecordingService.getResourceId(dto.channelName, user.userId);
-        await this.agoraRecordingService.startRecording(dto.channelName, dto.users);
+        await this.agoraRecordingService.startRecording(dto.channelName);
     }
 
     @Post('podcast/stop')

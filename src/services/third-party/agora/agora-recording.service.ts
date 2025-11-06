@@ -49,7 +49,7 @@ export class AgoraRecordingService {
         return data.resourceId;
     }
 
-    async startRecording(channelName: string, users: number[]) {
+    async startRecording(channelName: string) {
         const podcast = await this.podcastRepository.getPodcast(channelName);
         // users.push(podcast.)
         const url = `${this.baseUrl}/${process.env.AGORA_APP_ID}/cloud_recording/resourceid/${encodeURIComponent(podcast.resourceId)}/mode/mix/start`;
@@ -83,10 +83,10 @@ export class AgoraRecordingService {
                         mixedVideoLayout: 1,
                     },
                 },
-
                 recordingFileConfig: {
                     avFileType: ["hls", "mp4"]         // mp4-only is not allowed
-                }
+                },
+                // callbackUrl: "https://4958426cb618.ngrok-free.app/agora/webhook"//?token=supersecret"
             }
         };
 
@@ -136,35 +136,4 @@ export class AgoraRecordingService {
         console.log('creating s3 video record: ', videoDto);
         await this.videoRepository.create(videoDto);
     }
-
-    private getRecordingConfiguration(users: number[]): { uid: string, x_axis: number, y_axis: number, width: number, height: number }[] {
-        const count = users.length;
-        const configs = [] as { uid: string, x_axis: number, y_axis: number, width: number, height: number }[];
-
-        if (count === 1) {
-            configs.push({ uid: `${users[0]}`, x_axis: 0, y_axis: 0, width: 1, height: 1 });
-        } else if (count === 2) {
-            configs.push({ uid: `${users[0]}`, x_axis: 0, y_axis: 0, width: 0.5, height: 1 });
-            configs.push({ uid: `${users[1]}`, x_axis: 0.5, y_axis: 0, width: 0.5, height: 1 });
-        } else if (count === 3) {
-            configs.push({ uid: `${users[0]}`, x_axis: 0, y_axis: 0, width: 0.5, height: 0.5 });
-            configs.push({ uid: `${users[1]}`, x_axis: 0.5, y_axis: 0, width: 0.5, height: 0.5 });
-            configs.push({ uid: `${users[2]}`, x_axis: 0.25, y_axis: 0.5, width: 0.5, height: 0.5 });
-        } else {
-            // 4+ users: 2x2 grid
-            const grid = [
-                [0, 0],
-                [0.5, 0],
-                [0, 0.5],
-                [0.5, 0.5]
-            ];
-            for (let i = 0; i < Math.min(4, users.length); i++) {
-                const [x, y] = grid[i];
-                configs.push({ uid: `${users[i]}`, x_axis: x, y_axis: y, width: 0.5, height: 0.5 });
-            }
-        }
-        console.log('recording configs: ', configs);
-        return configs;
-    }
-
 }
