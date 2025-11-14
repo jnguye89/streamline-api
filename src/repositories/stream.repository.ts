@@ -1,6 +1,4 @@
 import { HttpException, Injectable } from "@nestjs/common";
-import { InjectMapper } from '@automapper/nestjs';
-import { Mapper } from "@automapper/core";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Stream } from "src/entity/stream.entity";
 import { Repository } from "typeorm";
@@ -8,12 +6,12 @@ import { StreamDto } from "src/dto/stream.dto";
 
 @Injectable()
 export class StreamRepository {
-    constructor(@InjectMapper() private readonly mapper: Mapper, @InjectRepository(Stream) private readonly streamRepo: Repository<Stream>) { }
+    constructor(@InjectRepository(Stream) private readonly streamRepo: Repository<Stream>) { }
 
     async findAll(): Promise<StreamDto[]> {
         const entity = await this.streamRepo.find();
-        const mapped = this.mapper.mapArray(entity, Stream, StreamDto);
-        return mapped;
+        const mapped = entity.map(e => { return { ...e } as StreamDto });//this.mapper.mapArray(entity, Stream, StreamDto);
+        return [...mapped];
     }
 
     async findStream(isActive: boolean, isLive: boolean, count?: number): Promise<StreamDto[]> {
@@ -24,7 +22,7 @@ export class StreamRepository {
             // },
             take: count
         })
-        return this.mapper.mapArray(entity, Stream, StreamDto);
+        return [...entity.map(e => { return { ...e } as StreamDto })]//this.mapper.mapArray(entity, Stream, StreamDto);
     }
 
     // async create(streamDto: StreamDto): Promise<StreamDto> {
@@ -45,6 +43,6 @@ export class StreamRepository {
         // entity.isActive = isActive;
         // entity.isLive = isLive;
         const stream = await this.streamRepo.save(entity);
-        return this.mapper.map(stream, Stream, StreamDto);
+        return { ...stream };
     }
 }

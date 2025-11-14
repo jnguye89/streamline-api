@@ -17,19 +17,13 @@ import { Video } from './entity/video.entity';
 import { Audio } from './entity/audio.entity';
 import { IvsService } from './services/third-party/ivs.services';
 import { AudioRepository } from './repositories/audio.repository';
-import { AutomapperModule } from '@automapper/nestjs';
-import { classes } from '@automapper/classes';
-import { AudioProfile } from './mappers/audio.mapper';
-import { VideoProfile } from './mappers/video.mapper';
 import { User_Integration } from './entity/user-integration.entity';
 import { UserIntegrationController } from './controllers/user-integration.controller';
 import { UserIntegrationService } from './services/user-integration.service';
 import { UserIntegrationRepository } from './repositories/user-integration.repository';
-import { UserIntegratinProfile } from './mappers/user-integration.mapper';
 import { VoxAuthService } from './services/third-party/vox-auth.service';
 import { VoximplantService } from './services/third-party/voximplant.service';
 import { Stream } from './entity/stream.entity';
-import { StreamProfile } from './mappers/stream.mapper';
 import StreamController from './controllers/stream/stream.controller';
 import { StreamService } from './services/stream.service';
 import { StreamRepository } from './repositories/stream.repository';
@@ -41,12 +35,10 @@ import { ThreadController } from './controllers/thread.controller';
 import { ThreadService } from './services/thread.service';
 import { ThreadRepository } from './repositories/thread.repository';
 import { Thread } from './entity/thread.entity';
-import { ThreadProfile } from './mappers/thread.mapper';
 import { User } from './entity/user.entity';
 import { UserRepository } from './repositories/user.repository';
 import { UserService } from './services/user.service';
 import { Auth0Service } from './services/third-party/auth0.service';
-import { UserProfile } from './mappers/user.mapper';
 import { ErrorLog } from './entity/error-log.entity';
 import { LogService } from './services/log.service';
 import { CallController } from './controllers/call/call.controller';
@@ -59,9 +51,6 @@ import { PodcastRepository } from './repositories/podcast.repository';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
-    AutomapperModule.forRoot({
-      strategyInitializer: classes(),
-    }),
     // AutomapperModule.forFeature([VideoProfile]),
     PassportModule,
     MulterModule.register(multerConfig),
@@ -107,15 +96,9 @@ import { PodcastRepository } from './repositories/podcast.repository';
     IvsService,
     AudioRepository,
     PodcastRepository,
-    AudioProfile,
-    VideoProfile,
-    StreamProfile,
     WowzaService,
-    ThreadProfile,
     UserIntegrationService,
     UserIntegrationRepository,
-    UserIntegratinProfile,
-    UserProfile,
     StreamsEvents,
     PublisherPresenceService,
     ThreadService,

@@ -35,8 +35,9 @@ export default class StreamController {
     /** Start (or reuse) and begin pushing updates */
     @Post('ensure-ready')
     async ensureReady(@User() user: UserDto, @Body() dto: { broadcastLocation: string; }) {
+        const location = !!dto?.broadcastLocation ? dto.broadcastLocation : 'us_west_oregon';
         this.logService.insertLog('getting a stream', 'streamcontroller.ensureReady')
-        const s = await this.streamService.ensureReady(dto.broadcastLocation, user.userId);
+        const s = await this.streamService.ensureReady(location, user.userId);
         return s;
     }
 

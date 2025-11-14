@@ -1,5 +1,3 @@
-import { Mapper } from "@automapper/core";
-import { InjectMapper } from "@automapper/nestjs";
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Auth0UserDto } from "src/dto/auth0-user.dto";
@@ -9,7 +7,6 @@ import { Repository } from "typeorm";
 @Injectable()
 export class UserRepository {
     constructor(
-        @InjectMapper() private readonly mapper: Mapper,
         @InjectRepository(User) private readonly userRepo: Repository<User>
     ) { }
 
@@ -18,7 +15,7 @@ export class UserRepository {
             where: { auth0UserId }
         });
 
-        return this.mapper.map(result, User, Auth0UserDto);
+        return { ...result } as Auth0UserDto;
     }
 
     async getAgoraUser(augoraId: number): Promise<Auth0UserDto> {
@@ -26,16 +23,17 @@ export class UserRepository {
             where: { agoraUserId: augoraId }
         })
 
-        return this.mapper.map(result, User, Auth0UserDto);
+        return { ...result } as Auth0UserDto;
     }
 
     async createUser(user: Auth0UserDto): Promise<Auth0UserDto> {
         const existingUser = this.getUser(user.auth0UserId);
         if (!!existingUser) return existingUser;
-        const entity = this.mapper.map(user, Auth0UserDto, User);
+        const entity = { ...user };
         entity.lastSyncedAt = new Date;
         const newUser = this.userRepo.create(entity);
-        return this.mapper.map(await this.userRepo.save(newUser), User, Auth0UserDto);
+        const savedUser = await this.userRepo.save(newUser)
+        return { ...savedUser };
     }
 
     async updateUser(user: Auth0UserDto): Promise<Auth0UserDto> {
@@ -49,9 +47,9 @@ export class UserRepository {
         return this.userRepo.save(entity);
     }
 
-    async getUsers() {
+    async getUsers(): Promise<Auth0UserDto[]> {
         const users = await this.userRepo.find();
-        return this.mapper.mapArray(users, User, Auth0UserDto)
+        return [...users.map(e => { return { ...e } })];
     }
 
     async getAuth0User(auth0Id: string): Promise<Auth0UserDto> {
@@ -61,6 +59,6 @@ export class UserRepository {
             }
         })
 
-        return this.mapper.map(user, User, Auth0UserDto);
+        return { ...user } as Auth0UserDto;
     }
 }

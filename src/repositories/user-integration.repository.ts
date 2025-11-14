@@ -1,5 +1,3 @@
-import { Mapper } from '@automapper/core';
-import { InjectMapper } from '@automapper/nestjs';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserIntegrationDto } from 'src/dto/user-integration.dto';
@@ -10,10 +8,9 @@ import { Repository } from 'typeorm';
 @Injectable()
 export class UserIntegrationRepository {
   constructor(
-    @InjectMapper() private readonly mapper: Mapper,
     @InjectRepository(User_Integration)
     private readonly userIntegrationRepo: Repository<User_Integration>,
-  ) {}
+  ) { }
 
   public async getUserIntegrationsByUserId(
     userId: string,
@@ -22,44 +19,28 @@ export class UserIntegrationRepository {
       where: { user: userId },
     });
 
-    return this.mapper.mapArray(
-      userIntegrations,
-      User_Integration,
-      UserIntegrationDto,
-    );
+    return [...userIntegrations.map(e => { return { ...e } as UserIntegrationDto })];
   }
- 
+
   public async getUserIntegrationByType(
     userId: string,
     integrationType: IntegrationType,
-  ) {
+  ): Promise<UserIntegrationDto> {
     const userIntegration = await this.userIntegrationRepo.findOne({
       where: { user: userId, integrationType },
     });
 
-    return this.mapper.map(
-      userIntegration,
-      User_Integration,
-      UserIntegrationDto,
-    );
+    return { ...userIntegration } as UserIntegrationDto;
   }
 
   public async createUserIntegration(
     userIntegrationDto: UserIntegrationDto,
   ): Promise<UserIntegrationDto> {
-    const userIntegration = this.mapper.map(
-      userIntegrationDto,
-      UserIntegrationDto,
-      User_Integration,
-    );
+    const userIntegration = { ...userIntegrationDto };
 
     const savedUserIntegration =
       await this.userIntegrationRepo.save(userIntegration);
 
-    return this.mapper.map(
-      savedUserIntegration,
-      User_Integration,
-      UserIntegrationDto,
-    );
+    return { ...savedUserIntegration };
   }
 }

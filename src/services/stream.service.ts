@@ -6,8 +6,6 @@ import { Repository } from "typeorm";
 import { WowzaService } from "./third-party/wowza.service";
 import { StreamsEvents } from "./third-party/streams.events";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Mapper } from "@automapper/core";
-import { InjectMapper } from "@automapper/nestjs";
 import { Cron } from "@nestjs/schedule";
 import { LogService } from "./log.service";
 import { UserService } from "./user.service";
@@ -15,7 +13,6 @@ import { UserService } from "./user.service";
 @Injectable()
 export class StreamService {
     constructor(
-        @InjectMapper() private readonly mapper: Mapper,
         private streamRepo: StreamRepository,
         @InjectRepository(Stream) private repo: Repository<Stream>,
         private wowza: WowzaService, private events: StreamsEvents,
