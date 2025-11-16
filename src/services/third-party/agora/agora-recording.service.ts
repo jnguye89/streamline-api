@@ -20,7 +20,7 @@ export class AgoraRecordingService {
 
     async getResourceId(channelName: string, userId: string) {
         // const uid = `${channelName}_${crypto.randomUUID()}`;
-        console.log('channel name: ', channelName)
+        //console.log('channel name: ', channelName)
         const uid = Math.floor(Math.random() * 100000000);
         const url = `${this.baseUrl}/${process.env.AGORA_APP_ID}/cloud_recording/acquire`;
         const payload = {
@@ -28,14 +28,14 @@ export class AgoraRecordingService {
             uid: `${uid}`,
             clientRequest: {}
         }
-        console.log('getting resourceId', payload);
+        //console.log('getting resourceId', payload);
 
-        console.log('agora token: ', this.agoraTokenService.createBasicAuthToken());
+        //console.log('agora token: ', this.agoraTokenService.createBasicAuthToken());
         const { data } = await firstValueFrom(this.http.post<{ resourceId: string }>(url,
             payload,
             { headers: { Authorization: `Basic ${this.agoraTokenService.createBasicAuthToken()}` }, }));
 
-        console.log('resourceId: ', data.resourceId);
+        //console.log('resourceId: ', data.resourceId);
         // TODO: Add podcast status
         const dto = {
             resourceId: data.resourceId,
@@ -43,7 +43,7 @@ export class AgoraRecordingService {
             auth0UserId: userId,
             channelName
         } as Podcast;
-        console.log('podcast dto: ', dto);
+        //console.log('podcast dto: ', dto);
         await this.podcastRepository.addPodcast(dto);
 
         return data.resourceId;
@@ -51,9 +51,8 @@ export class AgoraRecordingService {
 
     async startRecording(channelName: string) {
         const podcast = await this.podcastRepository.getPodcast(channelName);
-        // users.push(podcast.)
         const url = `${this.baseUrl}/${process.env.AGORA_APP_ID}/cloud_recording/resourceid/${encodeURIComponent(podcast.resourceId)}/mode/mix/start`;
-        const token = await this.agoraTokenService.createTokens(`${podcast.recordingUid}`, podcast.channelName);
+        const token = await this.agoraTokenService.createTokens(String(podcast.recordingUid), podcast.channelName);
         const payload = {
             cname: channelName,
             uid: String(podcast.recordingUid),     // recorder UID
@@ -86,24 +85,47 @@ export class AgoraRecordingService {
                 recordingFileConfig: {
                     avFileType: ["hls", "mp4"]         // mp4-only is not allowed
                 },
-                // callbackUrl: "https://4958426cb618.ngrok-free.app/agora/webhook"//?token=supersecret"
+                // callbackUrl: "https://70e4d0d5bb25.ngrok-free.app/call/agora/webhook"//?token=supersecret"
             }
         };
 
-        console.log('starting recording payload :', payload);
+        //console.log('starting recording payload :', payload);
 
         const { data } = await firstValueFrom(this.http.post<{ sid: string }>(url,
             payload,
             { headers: { Authorization: `Basic ${this.agoraTokenService.createBasicAuthToken()}` }, })
         );
 
-        console.log('start recording response ', data);
+        //console.log('start recording response ', data);
+
+        const queryUrl = `https://api.agora.io/v1/apps/09f3d1aa5ac64ffe95165c9a0a2b27e0/cloud_recording/resourceid/${podcast.resourceId}/sid/${data.sid}/mode/mix/query`
+        //console.log('query Url: ', queryUrl);
+        const result = await firstValueFrom(this.http.get(queryUrl,
+            { headers: { Authorization: `Basic ${this.agoraTokenService.createBasicAuthToken()}` }, }
+        ))
+        //console.log('query result: ', result.data);
+        // setTimeout(() => {
+        //     this.http
+        //         .get(queryUrl, {
+        //             headers: {
+        //                 Authorization: `Basic ${this.agoraTokenService.createBasicAuthToken()}`,
+        //             },
+        //         })
+        //         .subscribe({
+        //             next: (res: any) => {
+        //                 //console.log("query after 5s:", res);
+        //             },
+        //             error: (err) => {
+        //                 //console.error("query 5s error:", err?.error ?? err);
+        //             },
+        //         });
+        // }, 5000);
         // TODO: Add podcast status
         const dto = {
             sid: data.sid,
             channelName
         } as Podcast;
-        console.log('poadcast entity update: ', dto);
+        //console.log('poadcast entity update: ', dto);
         await this.podcastRepository.updatePodcast(dto);
 
         return data.sid;
@@ -118,22 +140,22 @@ export class AgoraRecordingService {
             uid: `${podcast.recordingUid}`,
             clientRequest: {}
         }
-        console.log('stopping recording payload: ', payload);
+        //console.log('stopping recording payload: ', payload);
         const { data } = await firstValueFrom(this.http.post<AgoraStopResponseDto>(url,
             payload,
             { headers: { Authorization: `Basic ${this.agoraTokenService.createBasicAuthToken()}` }, })
         );
 
-        console.log('stopping recording response from agora: ', data);
-        console.log('filelist: ', data.serverResponse);
+        //console.log('stopping recording response from agora: ', data);
+        //console.log('filelist: ', data.serverResponse);
         // TODO: update podcast entity with stopped status
-        console.log(data.serverResponse.fileList.find(f => f.fileName.endsWith('.mp4')));
+        //console.log(data.serverResponse.fileList.find(f => f.fileName.endsWith('.mp4')));
 
         const videoDto = {
             user: podcast.auth0UserId,
             videoPath: data.serverResponse.fileList.find(f => f.fileName.endsWith('.mp4'))?.fileName
         } as VideoDto;
-        console.log('creating s3 video record: ', videoDto);
+        //console.log('creating s3 video record: ', videoDto);
         await this.videoRepository.create(videoDto);
     }
 }

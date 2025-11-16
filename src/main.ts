@@ -6,8 +6,9 @@ import { AllExceptionsFilter } from './controllers/all-exceptions.filter';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { Reflector } from '@nestjs/core';
 // import { IoAdapter } from '@nestjs/platform-socket.io';
-import { ClassSerializerInterceptor } from '@nestjs/common';
+import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import * as bodyParser from 'body-parser';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -15,6 +16,10 @@ async function bootstrap() {
   app.use(bodyParser.urlencoded({ extended: true, limit: '500mb' }));
   app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+
+  // Enable Socket.IO
+  app.useWebSocketAdapter(new IoAdapter(app));
 
   const reflector = app.get(Reflector);
   app.useGlobalGuards(new JwtAuthGuard(reflector));

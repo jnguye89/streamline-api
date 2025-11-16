@@ -1,4 +1,5 @@
 import { Body, Controller, Post } from "@nestjs/common";
+import { Public } from "src/auth/public.decorator";
 import { User } from "src/auth/user.decorator";
 import { CreateAgoraTokenDto } from "src/dto/agora/agora-token.dto";
 import { UserDto } from "src/dto/user.dto";
@@ -15,19 +16,27 @@ export class CallController {
         // In production, ignore incoming dto.uid and use the authenticated user id!
         // e.g. const uid = req.user.sub (Auth0)
         const { channel, ttlSeconds } = dto;
+        //console.log(dto);
         return await this.agoraTokenService.createTokens(user.userId, channel, ttlSeconds);
     }
 
     @Post('podcast/start')
     async startPodcast(@Body() dto: { channelName: string }, @User() user: UserDto) {
-        // console.log('starting recording');
+        // //console.log('starting recording');
         await this.agoraRecordingService.getResourceId(dto.channelName, user.userId);
         await this.agoraRecordingService.startRecording(dto.channelName);
     }
 
     @Post('podcast/stop')
     async stopPodcast(@Body() dto: { channelName: string }) {
-        console.log('stopping recording');
+        //console.log('stopping recording');
         await this.agoraRecordingService.stopRecording(dto.channelName);
+    }
+
+    @Post('agora/webhook')
+    @Public()
+    agoraCallback(@Body() body: any) {
+        //console.log('AGORA CALLBACK', JSON.stringify(body));
+        return 'OK';
     }
 }

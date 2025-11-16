@@ -47,6 +47,8 @@ import { UserController } from './controllers/user.controller';
 import { AgoraRecordingService } from './services/third-party/agora/agora-recording.service';
 import { Podcast } from './entity/podcast.entity';
 import { PodcastRepository } from './repositories/podcast.repository';
+import { EventsService } from './services/events/events.service';
+import { EventsGateway } from './controllers/events/events.gateway';
 
 @Module({
   imports: [
@@ -108,7 +110,9 @@ import { PodcastRepository } from './repositories/podcast.repository';
     Auth0Service,
     LogService,
     AgoraTokenService,
-    AgoraRecordingService
+    AgoraRecordingService,
+    EventsService,
+    EventsGateway
   ],
 })
 export class AppModule { }

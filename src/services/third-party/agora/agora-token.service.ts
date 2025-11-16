@@ -14,14 +14,13 @@ export class AgoraTokenService {
     async createTokens(uid: string, channel: string, ttlSeconds?: number) {
         const user = await this.userService.getAuth0User(uid);
         const expire = Math.floor(Date.now() / 1000) + (ttlSeconds ?? this.defaultTtl);
-        console.log('create token: ', user);
         // uid = uid.replace(/\D/g, '')
         // Use string uid for RTM; RTC can take string uid with "buildTokenWithAccount"
         const rtcToken = RtcTokenBuilder.buildTokenWithAccount(
             this.appId,
             this.appCert,
             channel,
-            !!user ? `${user.agoraUserId}` : uid,                 // keep the same id across RTM/RTC
+            !!user.agoraUserId ? `${user.agoraUserId}` : uid,                 // keep the same id across RTM/RTC
             RtcRole.PUBLISHER,
             expire
         );
