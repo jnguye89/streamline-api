@@ -16,7 +16,7 @@ async function bootstrap() {
   app.use(bodyParser.urlencoded({ extended: true, limit: '500mb' }));
   app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  // app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
   // Enable Socket.IO
   app.useWebSocketAdapter(new IoAdapter(app));
