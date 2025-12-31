@@ -18,13 +18,22 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
   // app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
+  // Get the underlying Node HTTP server
+  const server: any = app.getHttpServer();
+
+  // Allow connections to stay open (so clients can reuse them)
+  server.keepAliveTimeout = 70_000; // ms (pick 60–75s)
+  server.headersTimeout = 75_000;  // MUST be > keepAliveTimeout
+  
   // Enable Socket.IO
   app.useWebSocketAdapter(new IoAdapter(app));
 
   const reflector = app.get(Reflector);
   app.useGlobalGuards(new JwtAuthGuard(reflector));
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:4200',
+    origin: process.env.CORS_ORIGIN
+      || 'http://localhost:4200',
+    // || 'http://localhost:5173',
     credentials: true,
   });
   const port = process.env.PORT ?? 3000;

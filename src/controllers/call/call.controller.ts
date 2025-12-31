@@ -16,8 +16,9 @@ export class CallController {
         // In production, ignore incoming dto.uid and use the authenticated user id!
         // e.g. const uid = req.user.sub (Auth0)
         const { channel, ttlSeconds } = dto;
+        const uid = dto.uid ? dto.uid : user.userId;
         //console.log(dto);
-        return await this.agoraTokenService.createTokens(user.userId, channel, ttlSeconds);
+        return await this.agoraTokenService.createTokens(`${uid}`, channel, ttlSeconds);
     }
 
     @Post('podcast/start')

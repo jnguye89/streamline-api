@@ -28,7 +28,7 @@ export class AgoraTokenService {
         const rtmToken = RtmTokenBuilder.buildToken(
             this.appId,
             this.appCert,
-            !!user ? `${user.agoraUserId}` : uid,
+            !!user.agoraUserId ? `${user.agoraUserId}` : uid,
             RtmRole.Rtm_User,
             expire
         );

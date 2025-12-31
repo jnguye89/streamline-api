@@ -28,6 +28,8 @@ export class StreamService {
         return await this.streamRepo.findStream(isActive, isLive, count);
     }
 
+    // async heartbeat()
+
     /** Return an existing ready/starting stream OR start one and begin polling */
     async ensureReady(broadcastLocation: string, user: string): Promise<Stream> {
         let stream = await this.repo.findOne({

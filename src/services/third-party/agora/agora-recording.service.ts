@@ -19,7 +19,7 @@ export class AgoraRecordingService {
         private videoRepository: VideoRepository) { }
 
     async getResourceId(channelName: string, userId: string) {
-        // const uid = `${channelName}_${crypto.randomUUID()}`;
+    // const uid = `${channelName}_${crypto.randomUUID()}`;
         //console.log('channel name: ', channelName)
         const uid = Math.floor(Math.random() * 100000000);
         const url = `${this.baseUrl}/${process.env.AGORA_APP_ID}/cloud_recording/acquire`;
@@ -85,7 +85,6 @@ export class AgoraRecordingService {
                 recordingFileConfig: {
                     avFileType: ["hls", "mp4"]         // mp4-only is not allowed
                 },
-                // callbackUrl: "https://70e4d0d5bb25.ngrok-free.app/call/agora/webhook"//?token=supersecret"
             }
         };
 
@@ -103,23 +102,7 @@ export class AgoraRecordingService {
         const result = await firstValueFrom(this.http.get(queryUrl,
             { headers: { Authorization: `Basic ${this.agoraTokenService.createBasicAuthToken()}` }, }
         ))
-        //console.log('query result: ', result.data);
-        // setTimeout(() => {
-        //     this.http
-        //         .get(queryUrl, {
-        //             headers: {
-        //                 Authorization: `Basic ${this.agoraTokenService.createBasicAuthToken()}`,
-        //             },
-        //         })
-        //         .subscribe({
-        //             next: (res: any) => {
-        //                 //console.log("query after 5s:", res);
-        //             },
-        //             error: (err) => {
-        //                 //console.error("query 5s error:", err?.error ?? err);
-        //             },
-        //         });
-        // }, 5000);
+        
         // TODO: Add podcast status
         const dto = {
             sid: data.sid,

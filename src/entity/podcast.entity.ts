@@ -30,4 +30,7 @@ export class Podcast {
     /** Bumped automatically on UPDATE */
     @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
     updatedAt: Date;
+
+    @Column({ type: 'timestamp', name: 'last_heartbeat_at', nullable: true })
+    lastHeartbeatAt?: Date;
 }

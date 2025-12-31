@@ -6,7 +6,7 @@ export class Thread {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column({ length: 1024 })
+    @Column({ length: 5000 })
     threadText: string;
 
     @Column({ name: "auth0_user_id", type: "varchar", length: 128 })

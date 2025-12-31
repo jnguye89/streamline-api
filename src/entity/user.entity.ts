@@ -1,6 +1,7 @@
 import { Column, Entity, JoinColumn, OneToMany, OneToOne, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
 import { Thread } from "./thread.entity";
 import { Stream } from "./stream.entity";
+import { AgoraStream } from "./agora-stream.entity";
 
 @Entity()
 export class User {
@@ -21,4 +22,7 @@ export class User {
 
     @OneToOne(() => Stream, (s) => s.user)
     stream!: Stream | null;
+
+    @OneToMany(() => AgoraStream, (s) => s.user)
+    streams!: AgoraStream[];
 }

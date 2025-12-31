@@ -49,6 +49,8 @@ import { Podcast } from './entity/podcast.entity';
 import { PodcastRepository } from './repositories/podcast.repository';
 import { EventsService } from './services/events/events.service';
 import { EventsGateway } from './controllers/events/events.gateway';
+import { AgoraStream } from './entity/agora-stream.entity';
+import { AgoraStreamRepository } from './repositories/agora-stream.repository';
 
 @Module({
   imports: [
@@ -73,7 +75,7 @@ import { EventsGateway } from './controllers/events/events.gateway';
       autoLoadEntities: true,
       synchronize: true, // turn off in prod
     }),
-    TypeOrmModule.forFeature([Video, Audio, User_Integration, Stream, Thread, User, ErrorLog, Podcast]),
+    TypeOrmModule.forFeature([Video, Audio, User_Integration, Stream, AgoraStream, Thread, User, ErrorLog, Podcast]),
   ],
   controllers: [
     AppController,
@@ -95,6 +97,7 @@ import { EventsGateway } from './controllers/events/events.gateway';
     S3Service,
     VideoRepository,
     StreamRepository,
+    AgoraStreamRepository,
     IvsService,
     AudioRepository,
     PodcastRepository,
