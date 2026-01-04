@@ -56,8 +56,8 @@ export default class StreamController {
         }
         stream.status = 'live';
         await this.agoraStreamRepository.save(stream);
-        // await this.agoraRecordingService.getResourceId(channelName, user.userId);
-        // await this.agoraRecordingService.startRecording(channelName);
+        await this.agoraRecordingService.getResourceId(channelName, user.userId);
+        await this.agoraRecordingService.startRecording(channelName);
         return { ok: true };
     }
 
@@ -79,7 +79,7 @@ export default class StreamController {
         //     throw new Error('Unauthorized');
         // }
         await this.agoraStreamRepository.save(stream);
-        // await this.agoraRecordingService.stopRecording(channelName);
+        await this.agoraRecordingService.stopRecording(channelName);
         return { ok: true };
     }
 }
