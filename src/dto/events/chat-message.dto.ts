@@ -6,4 +6,10 @@ export class RecordingDto {
 
     @IsBoolean()
     isRecording!: boolean;
+
+    @IsString()
+    streamName: string;
+
+    @IsString()
+    agoraUserId: number;
 }

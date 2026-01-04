@@ -11,16 +11,21 @@ export class AgoraTokenService {
 
     constructor(private userService: UserService) { }
 
-    async createTokens(uid: string, channel: string, ttlSeconds?: number) {
-        const user = await this.userService.getAuth0User(uid);
+    async createTokens(agoraUid: number, channel: string, ttlSeconds?: number) {
+        const user = await this.userService.getAgoraUser(agoraUid);
+
+        // Make sure this is a NUMBER. If you don’t have one, create/store one.
+        // let agoraUidNumber = Number(user.agoraUserId);
+        // if (!Number.isFinite(agoraUidNumber)) agoraUidNumber = +agoraUid;
+
         const expire = Math.floor(Date.now() / 1000) + (ttlSeconds ?? this.defaultTtl);
-        // uid = uid.replace(/\D/g, '')
-        // Use string uid for RTM; RTC can take string uid with "buildTokenWithAccount"
-        const rtcToken = RtcTokenBuilder.buildTokenWithAccount(
+        // console.log(agoraUidNumber);
+
+        const rtcToken = RtcTokenBuilder.buildTokenWithUid(
             this.appId,
             this.appCert,
             channel,
-            !!user.agoraUserId ? `${user.agoraUserId}` : uid,                 // keep the same id across RTM/RTC
+            agoraUid,
             RtcRole.PUBLISHER,
             expire
         );
@@ -28,13 +33,14 @@ export class AgoraTokenService {
         const rtmToken = RtmTokenBuilder.buildToken(
             this.appId,
             this.appCert,
-            !!user.agoraUserId ? `${user.agoraUserId}` : uid,
+            String(agoraUid), // RTM uses string
             RtmRole.Rtm_User,
             expire
         );
 
-        return { appId: this.appId, rtcToken, rtmToken, expireAt: expire };
+        return { appId: this.appId, rtcToken, rtmToken, expireAt: expire, agoraUid: agoraUid };
     }
+
 
     createBasicAuthToken(): string {
         const username = process.env.AGORA_CUSTOMER_ID;

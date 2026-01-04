@@ -8,6 +8,7 @@ import { AgoraTokenService } from "src/services/third-party/agora/agora-token.se
 import { AgoraStreamRepository } from "src/repositories/agora-stream.repository";
 import { AgoraStream } from "src/entity/agora-stream.entity";
 import { AgoraRecordingService } from "src/services/third-party/agora/agora-recording.service";
+import { UserService } from "src/services/user.service";
 
 @Controller('stream')
 export default class StreamController {
@@ -15,7 +16,8 @@ export default class StreamController {
         private streamService: StreamService,
         private agoraTokenService: AgoraTokenService,
         private agoraStreamRepository: AgoraStreamRepository,
-        private agoraRecordingService: AgoraRecordingService
+        private agoraRecordingService: AgoraRecordingService,
+        private userSevice: UserService
     ) { }
 
     @Get()
@@ -37,7 +39,11 @@ export default class StreamController {
         if (!stream) {
             stream = await this.agoraStreamRepository.createNew(channelName, user.userId);
         }
-        const tokens = await this.agoraTokenService.createTokens(user.userId, channelName);
+        var userSearch = await this.userSevice.getAuth0User(user.userId);
+        if (!userSearch.agoraUserId) {
+            throw new Error('User does not have an Agora User ID');
+        }
+        const tokens = await this.agoraTokenService.createTokens(userSearch.agoraUserId, channelName);
         return tokens;
     }
 
@@ -50,8 +56,8 @@ export default class StreamController {
         }
         stream.status = 'live';
         await this.agoraStreamRepository.save(stream);
-        await this.agoraRecordingService.getResourceId(channelName, user.userId);
-        await this.agoraRecordingService.startRecording(channelName);
+        // await this.agoraRecordingService.getResourceId(channelName, user.userId);
+        // await this.agoraRecordingService.startRecording(channelName);
         return { ok: true };
     }
 
@@ -69,11 +75,11 @@ export default class StreamController {
         if (!stream) {
             throw new Error('Stream not found');
         }
-        if (stream.user.auth0UserId !== user.userId) {
-            throw new Error('Unauthorized');
-        }
+        // if (stream.user.auth0UserId !== user.userId) {
+        //     throw new Error('Unauthorized');
+        // }
         await this.agoraStreamRepository.save(stream);
-        await this.agoraRecordingService.stopRecording(channelName);
+        // await this.agoraRecordingService.stopRecording(channelName);
         return { ok: true };
     }
 }

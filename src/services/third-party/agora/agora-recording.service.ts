@@ -52,7 +52,7 @@ export class AgoraRecordingService {
     async startRecording(channelName: string) {
         const podcast = await this.podcastRepository.getPodcast(channelName);
         const url = `${this.baseUrl}/${process.env.AGORA_APP_ID}/cloud_recording/resourceid/${encodeURIComponent(podcast.resourceId)}/mode/mix/start`;
-        const token = await this.agoraTokenService.createTokens(String(podcast.recordingUid), podcast.channelName);
+        const token = await this.agoraTokenService.createTokens(podcast.recordingUid, podcast.channelName);
         const payload = {
             cname: channelName,
             uid: String(podcast.recordingUid),     // recorder UID

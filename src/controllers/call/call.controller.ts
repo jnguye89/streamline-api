@@ -15,10 +15,14 @@ export class CallController {
     async create(@Body() dto: CreateAgoraTokenDto, @User() user: UserDto) {
         // In production, ignore incoming dto.uid and use the authenticated user id!
         // e.g. const uid = req.user.sub (Auth0)
+        const userSearch = await this.userService.getAuth0User(user.userId);
         const { channel, ttlSeconds } = dto;
-        const uid = dto.uid ? dto.uid : user.userId;
+        const uid = dto.uid ? dto.uid : userSearch.agoraUserId;
         //console.log(dto);
-        return await this.agoraTokenService.createTokens(`${uid}`, channel, ttlSeconds);
+        if (!uid) {
+            throw new Error('User does not have an Agora User ID');
+        }
+        return await this.agoraTokenService.createTokens(uid, channel, ttlSeconds);
     }
 
     @Post('podcast/start')

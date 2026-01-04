@@ -9,12 +9,12 @@ import {
     ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger, UnauthorizedException, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Logger, UseGuards } from '@nestjs/common';
 import { EventsService } from 'src/services/events/events.service';
 import { JoinRoomDto } from 'src/dto/events/join-room.dto';
 import { RecordingDto } from 'src/dto/events/chat-message.dto';
-import { ExceptionsHandler } from '@nestjs/core/exceptions/exceptions-handler';
 import { WsJwtGuard } from 'src/auth/jwt-ws.guard';
+import { AgoraTokenService } from 'src/services/third-party/agora/agora-token.service';
 
 // @UseGuards(WsJwtGuard) // 🔐 all events & connections require valid JWT
 @WebSocketGateway({
@@ -30,7 +30,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer()
     server!: Server;
 
-    constructor(private readonly eventsService: EventsService) { }
+    constructor(private readonly eventsService: EventsService, private readonly agoraTokenService: AgoraTokenService) { }
 
     // Socket.IO server available here
     afterInit() {
@@ -98,6 +98,9 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
             userId: client.data.userId,
             socketId: client.id,
             roomId: body.roomId,
+            agoraUserId: body.agoraUserId,
+            streamName: body.streamName
+            // token: this.agoraTokenService.createTokens(`${body.agoraUserId}`, body.streamName),
         });
         return { ok: true, roomId: body.roomId };
     }
