@@ -19,7 +19,7 @@ export class AgoraRecordingService {
         private videoRepository: VideoRepository) { }
 
     async getResourceId(channelName: string, userId: string) {
-        // const uid = `${channelName}_${crypto.randomUUID()}`;
+    // const uid = `${channelName}_${crypto.randomUUID()}`;
         //console.log('channel name: ', channelName)
         const uid = Math.floor(Math.random() * 100000000);
         const url = `${this.baseUrl}/${process.env.AGORA_APP_ID}/cloud_recording/acquire`;
@@ -102,7 +102,7 @@ export class AgoraRecordingService {
         const result = await firstValueFrom(this.http.get(queryUrl,
             { headers: { Authorization: `Basic ${this.agoraTokenService.createBasicAuthToken()}` }, }
         ))
-
+        
         // TODO: Add podcast status
         const dto = {
             sid: data.sid,
@@ -136,8 +136,7 @@ export class AgoraRecordingService {
 
         const videoDto = {
             user: podcast.auth0UserId,
-            videoPath: data.serverResponse.fileList.find(f => f.fileName.endsWith('.mp4'))?.fileName,
-            type: 'podcast'
+            videoPath: data.serverResponse.fileList.find(f => f.fileName.endsWith('.mp4'))?.fileName
         } as VideoDto;
         //console.log('creating s3 video record: ', videoDto);
         await this.videoRepository.create(videoDto);

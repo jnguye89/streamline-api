@@ -48,16 +48,14 @@ export default class StreamController {
     }
 
     @Put('publish')
-    async publishStream(@User() user: UserDto, @Body() dto: { channelName: string; isStreaming: boolean; }) {
+    async publishStream(@User() user: UserDto, @Body() dto: { channelName: string; }) {
         const channelName = dto?.channelName;
         const stream = await this.agoraStreamRepository.findByChannelName(channelName);
         if (!stream) {
             throw new Error('Stream not found');
         }
-        if (dto.isStreaming) {
-            stream.status = 'live';
-            await this.agoraStreamRepository.save(stream);
-        }
+        stream.status = 'live';
+        await this.agoraStreamRepository.save(stream);
         await this.agoraRecordingService.getResourceId(channelName, user.userId);
         await this.agoraRecordingService.startRecording(channelName);
         return { ok: true };
@@ -80,7 +78,6 @@ export default class StreamController {
         // if (stream.user.auth0UserId !== user.userId) {
         //     throw new Error('Unauthorized');
         // }
-        stream.status = 'ended';
         await this.agoraStreamRepository.save(stream);
         await this.agoraRecordingService.stopRecording(channelName);
         return { ok: true };

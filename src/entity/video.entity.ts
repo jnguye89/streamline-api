@@ -24,7 +24,4 @@ export class Video {
   /** Bumped automatically on UPDATE */
   @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
   updatedAt: Date;
-
-  @Column({ nullable: true })
-  type: 'podcast' | 'stream' | 'upload';
 }
