@@ -1,0 +1,107 @@
+import { HttpService } from "@nestjs/axios";
+import { HttpException, Injectable, NotFoundException } from "@nestjs/common";
+import { AxiosError } from "axios";
+import { firstValueFrom } from "rxjs";
+import { CreateLiveStreamDto } from "src/dto/wowza/create-live-stream.dto";
+import { LiveStreamResponse } from "src/dto/wowza/live-stream-response.dto";
+import { StreamStatusDto } from "src/dto/wowza/stream-status.dto";
+import { WowzaVideoDto } from "src/dto/wowza/video.dto";
+import { StreamRepository } from "src/repositories/stream.repository";
+
+@Injectable()
+export class WowzaService {
+    private wowzaUrl = process.env.WOWZA_API_BASE;
+    private wowzaToken = process.env.WOWZA_JWT;
+
+    constructor(private http: HttpService, private streamRepo: StreamRepository) { }
+
+    public async createStream(userId: string, broadcastLocation: string = 'us_west_oregon'): Promise<LiveStreamResponse> {
+        const payload: { live_stream: CreateLiveStreamDto } = {
+            live_stream: new CreateLiveStreamDto()
+        }
+
+        payload.live_stream.name = userId;
+
+        try {
+            const { data } = await firstValueFrom(
+                this.http.post<LiveStreamResponse>(`${this.wowzaUrl}/live_streams`, payload, {
+                    headers: { Authorization: `Bearer ${this.wowzaToken}` },
+                },),
+            );
+            return data;
+        } catch (err) {
+            const e = err as AxiosError<any>;
+            // Wowza returns 401 (auth) and 422 (validation) on create
+            const status = e.response?.status ?? 500;
+            const message =
+                e.response?.data?.error?.message ??
+                e.response?.data ??
+                e.message ??
+                'Wowza create live stream failed';
+            throw new HttpException(message, status);
+        }
+    }
+
+    // NB: set baseURL + Authorization header in AxiosModule.forRoot
+    async startLiveStream(wowzaId: string) {
+        await firstValueFrom(this.http.put(`${this.wowzaUrl}/live_streams/${wowzaId}/start`, null, {
+            headers: { Authorization: `Bearer ${this.wowzaToken}` }
+        }));
+    }
+
+    async stopLiveStream(wowzaId: string) {
+        await firstValueFrom(this.http.put(`${this.wowzaUrl}/live_streams/${wowzaId}/stop`, null, {
+            headers: { Authorization: `Bearer ${this.wowzaToken}` }
+        }));
+    }
+
+    async getLiveStream(wowzaId: string): Promise<LiveStreamResponse> {
+        const res = await firstValueFrom(this.http.get(`${this.wowzaUrl}/live_streams/${wowzaId}`, {
+            headers: { Authorization: `Bearer ${this.wowzaToken}` }
+        }));
+        return res.data;
+    }
+
+    /** Returns true when stream can accept WebRTC publish */
+    async isReadyState(ls: LiveStreamResponse): Promise<boolean> {
+        const isActive = ls?.live_stream.state?.toLowerCase() == 'started'
+        if (isActive) {
+            const { data } = await firstValueFrom(
+                this.http.get<StreamStatusDto>(`${this.wowzaUrl}/analytics/ingest/live_streams/${ls.live_stream.id}`, {
+                    headers: { Authorization: `Bearer ${this.wowzaToken}` },
+                },),
+            );
+
+            return data.live_stream.bytes_in_rate.value <= 0;
+        }
+        // Wowza Video typically: "state": "started" when ready for publish
+        // (You can refine to check transcoder/encoder details if needed)
+        return false;
+    }
+
+    async isStreaming(streamId: string): Promise<boolean> {
+        const { data } = await firstValueFrom(
+            this.http.get<StreamStatusDto>(`${this.wowzaUrl}/analytics/ingest/live_streams/${streamId}`, {
+                headers: { Authorization: `Bearer ${this.wowzaToken}` },
+            },),
+        );
+
+        return data.live_stream.bytes_in_rate.value > 0;
+    }
+
+    async getRecording(recordingId: string): Promise<{ download_url: string; video_id: string, extension: string; }> {
+        const { data } = await firstValueFrom(this.http.get<WowzaVideoDto>(`${this.wowzaUrl}/videos/${recordingId}`, {
+            headers: { Authorization: `Bearer ${this.wowzaToken}` }
+        }))
+
+        const video = data.video.encodings.filter(e => e.video_container == 'mp4').sort((a, b) => a < b ? -1 : a > b ? 1 : 0)[0];
+        if (!video.video_file_url) throw new NotFoundException("Missing vide url");
+        return { download_url: video.video_file_url, video_id: data.video.id, extension: video.video_container };
+    }
+
+    async deleteRecording(recordingId: string): Promise<void> {
+        await firstValueFrom(this.http.delete(`${this.wowzaUrl}/videos/${recordingId}`, {
+            headers: { Authorization: `Bearer ${this.wowzaToken}` }
+        }));
+    }
+}
