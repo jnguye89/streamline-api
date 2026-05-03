@@ -1,7 +1,7 @@
 import { Body, Controller, Post } from "@nestjs/common";
 import { Public } from "src/auth/public.decorator";
 import { User } from "src/auth/user.decorator";
-import { CreateAgoraTokenDto } from "src/dto/agora/agora-token.dto";
+import { CreateAgoraTokenDto, CreateViewerTokenDto } from "src/dto/agora/agora-token.dto";
 import { UserDto } from "src/dto/user.dto";
 import { AgoraRecordingService } from "src/services/third-party/agora/agora-recording.service";
 import { AgoraTokenService } from "src/services/third-party/agora/agora-token.service";
@@ -23,6 +23,12 @@ export class CallController {
             throw new Error('User does not have an Agora User ID');
         }
         return await this.agoraTokenService.createTokens(uid, channel, ttlSeconds);
+    }
+
+    @Post('agora/viewer-token')
+    @Public()
+    async createAnonymousToken(@Body() dto: CreateViewerTokenDto) {
+        return this.agoraTokenService.createViewerTokens(dto.channel, dto.ttlSeconds);
     }
 
     @Post('podcast/start')

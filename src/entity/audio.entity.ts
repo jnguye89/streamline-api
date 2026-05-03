@@ -9,22 +9,22 @@ import {
 @Entity()
 export class Audio {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column({ length: 255 })
-  user: string;
+  user!: string;
 
   @Column({ length: 100, nullable: true })
-  name: string;
+  name!: string;
 
   @Column({ length: 2083 })
-  audioPath: string;
+  audioPath!: string;
 
   /** Set automatically on INSERT */
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 
   /** Bumped automatically on UPDATE */
   @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
-  updatedAt: Date;
+  updatedAt!: Date;
 }

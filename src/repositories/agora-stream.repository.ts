@@ -36,6 +36,7 @@ export class AgoraStreamRepository {
     }
 
     async save(stream: AgoraStream): Promise<AgoraStream> {
+        await this.agoraStreamRepo.update({ id: stream.id }, stream);
         return await this.agoraStreamRepo.save(stream);
     }
 

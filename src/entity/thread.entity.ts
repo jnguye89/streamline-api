@@ -4,10 +4,10 @@ import { User } from "./user.entity";
 @Entity()
 export class Thread {
     @PrimaryGeneratedColumn()
-    id: number;
+    id!: number;
 
     @Column({ length: 5000 })
-    threadText: string;
+    threadText!: string;
 
     @Column({ name: "auth0_user_id", type: "varchar", length: 128 })
     auth0UserId!: string;
@@ -25,9 +25,9 @@ export class Thread {
 
     /** Set automatically on INSERT */
     @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
-    createdAt: Date;
+    createdAt!: Date;
 
     /** Bumped automatically on UPDATE */
     @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
-    updatedAt: Date;
+    updatedAt!: Date;
 }

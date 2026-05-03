@@ -29,7 +29,6 @@ import { StreamService } from './services/stream.service';
 import { StreamRepository } from './repositories/stream.repository';
 import { WowzaService } from './services/third-party/wowza.service';
 import { StreamsEvents } from './services/third-party/streams.events';
-import { PublisherPresenceService } from './services/publisher-presence.service';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThreadController } from './controllers/thread.controller';
 import { ThreadService } from './services/thread.service';
@@ -51,9 +50,21 @@ import { EventsService } from './services/events/events.service';
 import { EventsGateway } from './controllers/events/events.gateway';
 import { AgoraStream } from './entity/agora-stream.entity';
 import { AgoraStreamRepository } from './repositories/agora-stream.repository';
+import { BullModule } from '@nestjs/bullmq';
+import { VideoProcessingProcessor } from './workers/video-processing.worker';
+import { VideoQueueService } from './services/video-queue.service';
 
 @Module({
   imports: [
+    BullModule.forRoot({
+      connection: {
+        host: 'localhost',
+        port: 6379
+      }
+    }),
+    BullModule.registerQueue({
+      name: 'video-processing',
+    }),
     ScheduleModule.forRoot(),
     // AutomapperModule.forFeature([VideoProfile]),
     PassportModule,
@@ -88,6 +99,8 @@ import { AgoraStreamRepository } from './repositories/agora-stream.repository';
     UserController
   ],
   providers: [
+    VideoQueueService,
+    VideoProcessingProcessor,
     VoximplantService,
     VoxAuthService,
     VideoService,
@@ -105,7 +118,6 @@ import { AgoraStreamRepository } from './repositories/agora-stream.repository';
     UserIntegrationService,
     UserIntegrationRepository,
     StreamsEvents,
-    PublisherPresenceService,
     ThreadService,
     ThreadRepository,
     UserRepository,
@@ -117,5 +129,6 @@ import { AgoraStreamRepository } from './repositories/agora-stream.repository';
     EventsService,
     EventsGateway
   ],
+  exports: [VideoQueueService]
 })
 export class AppModule { }

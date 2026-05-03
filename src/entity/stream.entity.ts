@@ -4,22 +4,22 @@ import { User } from "./user.entity";
 @Entity()
 export class Stream {
     @PrimaryGeneratedColumn()
-    id: number;
+    id!: number;
 
     @Column({ length: 10, unique: true })
-    wowzaId: string;
+    wowzaId!: string;
 
     @Column({ length: 50 })
-    broadcastLocation: string;
+    broadcastLocation!: string;
 
     @Column({ length: 15 })
-    applicationName: string;
+    applicationName!: string;
 
     @Column({ length: 500 })
-    wssStreamUrl: string;
+    wssStreamUrl!: string;
 
     @Column({ length: 10 })
-    streamName: string;
+    streamName!: string;
 
     @OneToOne(() => User, (u) => u.stream, {
         onDelete: "RESTRICT",

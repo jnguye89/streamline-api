@@ -45,6 +45,7 @@ export class VideoController {
     const result = await this.videoService.generateUploadUrl(
       body.fileName,
       body.mimeType,
+      'videos/original'
     );
     return result; // returns { uploadUrl, key }
   }

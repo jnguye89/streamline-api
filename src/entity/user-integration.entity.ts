@@ -10,30 +10,30 @@ import {
 @Entity()
 export class User_Integration {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column({ length: 250 })
-  user: string;
+  user!: string;
 
   @Column({ length: 250 })
-  integrationUsername: string;
+  integrationUsername!: string;
 
   @Column({ length: 250 })
 
   @Column()
-  ha1: string;
+  ha1!: string;
 
   @Column({
     type: 'enum',
     enum: IntegrationType,
   })
-  integrationType: IntegrationType;
+  integrationType!: IntegrationType;
 
   /** Set automatically on INSERT */
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
-  createdAt: Date;
+  createdAt!: Date;
 
   /** Bumped automatically on UPDATE */
   @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
-  updatedAt: Date;
+  updatedAt!: Date;
 }

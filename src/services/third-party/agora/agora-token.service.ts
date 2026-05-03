@@ -42,6 +42,23 @@ export class AgoraTokenService {
     }
 
 
+    createViewerTokens(channel: string, ttlSeconds?: number) {
+        const expire = Math.floor(Date.now() / 1000) + (ttlSeconds ?? this.defaultTtl);
+
+        // uid=0 tells Agora to auto-assign a unique UID per session, so concurrent
+        // anonymous viewers on the same channel never collide with each other.
+        const rtcToken = RtcTokenBuilder.buildTokenWithUid(
+            this.appId,
+            this.appCert,
+            channel,
+            0,
+            RtcRole.SUBSCRIBER,
+            expire
+        );
+
+        return { appId: this.appId, rtcToken, expireAt: expire };
+    }
+
     createBasicAuthToken(): string {
         const username = process.env.AGORA_CUSTOMER_ID;
         const password = process.env.AGORA_SECRET;

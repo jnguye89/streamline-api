@@ -67,7 +67,7 @@ export class S3Service {
         }),
       );
       return signedUrls;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error listing files from S3:', error);
       this.logService.insertLog(error, 's3Service.listFiles');
       throw error;
@@ -117,8 +117,9 @@ export class S3Service {
   public async generateUploadUrl(
     fileName: string,
     mimeType: string,
+    keyRoot: string
   ): Promise<{ uploadUrl: string; key: string }> {
-    const key = `uploads/${uuidv4()}-${fileName}`;
+    const key = `${keyRoot}/${uuidv4()}-${fileName}`;
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,

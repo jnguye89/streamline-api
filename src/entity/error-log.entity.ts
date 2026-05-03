@@ -3,13 +3,13 @@ import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateCol
 @Entity()
 export class ErrorLog {
     @PrimaryGeneratedColumn()
-    id: number;
+    id!: number;
 
     @Column({ length: 5000 })
-    message: string;
+    message!: string;
 
     @Column({ type: 'varchar', length: 250, nullable: true })
-    errorSource: string | null;
+    errorSource!: string | null;
 
     @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
     createdAt!: Date;

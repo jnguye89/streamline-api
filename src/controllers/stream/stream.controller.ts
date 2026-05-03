@@ -78,6 +78,7 @@ export default class StreamController {
         // if (stream.user.auth0UserId !== user.userId) {
         //     throw new Error('Unauthorized');
         // }
+        stream.status = 'ended';
         await this.agoraStreamRepository.save(stream);
         await this.agoraRecordingService.stopRecording(channelName);
         return { ok: true };

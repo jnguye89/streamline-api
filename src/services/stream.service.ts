@@ -52,7 +52,7 @@ export class StreamService {
                     streamName: streamDto.live_stream.source_connection_information?.stream_name
                 });
             }
-            catch (ex) {
+            catch (ex: any) {
 
                 throw new Error(ex);
             }

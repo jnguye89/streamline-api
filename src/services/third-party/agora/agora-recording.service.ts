@@ -7,6 +7,7 @@ import { Podcast } from "src/entity/podcast.entity";
 import { AgoraStopResponseDto } from "src/dto/agora-stop-response.dto";
 import { VideoRepository } from "src/repositories/video.repository";
 import { VideoDto } from "src/dto/video.dto";
+import { VideoQueueService } from "src/services/video-queue.service";
 
 @Injectable()
 export class AgoraRecordingService {
@@ -16,10 +17,11 @@ export class AgoraRecordingService {
         private agoraTokenService: AgoraTokenService,
         private http: HttpService,
         private podcastRepository: PodcastRepository,
-        private videoRepository: VideoRepository) { }
+        private videoRepository: VideoRepository,
+        private videoQueueService: VideoQueueService) { }
 
     async getResourceId(channelName: string, userId: string) {
-    // const uid = `${channelName}_${crypto.randomUUID()}`;
+        // const uid = `${channelName}_${crypto.randomUUID()}`;
         //console.log('channel name: ', channelName)
         const uid = Math.floor(Math.random() * 100000000);
         const url = `${this.baseUrl}/${process.env.AGORA_APP_ID}/cloud_recording/acquire`;
@@ -65,7 +67,7 @@ export class AgoraRecordingService {
                     bucket: process.env.AWS_S3_BUCKET,
                     accessKey: process.env.AGORA_S3_ACCESS_KEY,
                     secretKey: process.env.AGORA_S3_SECRET,
-                    fileNamePrefix: ["uploads", "agora"]
+                    fileNamePrefix: ["videos", "original"]
                 },
 
                 // ✅ make sure we subscribe to ALL audio/video streams
@@ -102,7 +104,7 @@ export class AgoraRecordingService {
         const result = await firstValueFrom(this.http.get(queryUrl,
             { headers: { Authorization: `Basic ${this.agoraTokenService.createBasicAuthToken()}` }, }
         ))
-        
+
         // TODO: Add podcast status
         const dto = {
             sid: data.sid,
@@ -129,16 +131,14 @@ export class AgoraRecordingService {
             { headers: { Authorization: `Basic ${this.agoraTokenService.createBasicAuthToken()}` }, })
         );
 
-        //console.log('stopping recording response from agora: ', data);
-        //console.log('filelist: ', data.serverResponse);
-        // TODO: update podcast entity with stopped status
-        //console.log(data.serverResponse.fileList.find(f => f.fileName.endsWith('.mp4')));
-
         const videoDto = {
             user: podcast.auth0UserId,
             videoPath: data.serverResponse.fileList.find(f => f.fileName.endsWith('.mp4'))?.fileName
         } as VideoDto;
         //console.log('creating s3 video record: ', videoDto);
         await this.videoRepository.create(videoDto);
+
+        // TODO: check for feature flag on user table (or wherever else features will be stored)
+        await this.videoQueueService.enqueueVideoProcessing(`${podcast.sid}${podcast.channelName}`);
     }
 }

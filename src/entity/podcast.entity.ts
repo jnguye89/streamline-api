@@ -3,33 +3,33 @@ import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateCol
 @Entity()
 export class Podcast {
     @PrimaryGeneratedColumn()
-    id: number;
+    id!: number;
 
     @Column({ length: 300 })
-    resourceId: string;
+    resourceId!: string;
 
     @Column()
-    recordingUid: number;
+    recordingUid!: number;
 
     @Column({ length: 100, nullable: true })
-    sid: string;
+    sid!: string;
 
     @Column({ length: 100 })
-    channelName: string;
+    channelName!: string;
 
     @Column({ nullable: true })
-    status: string;
+    status!: string;
 
     @Column()
-    auth0UserId: string;
+    auth0UserId!: string;
 
     /** Set automatically on INSERT */
     @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
-    createdAt: Date;
+    createdAt!: Date;
 
     /** Bumped automatically on UPDATE */
     @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
-    updatedAt: Date;
+    updatedAt!: Date;
 
     @Column({ type: 'timestamp', name: 'last_heartbeat_at', nullable: true })
     lastHeartbeatAt?: Date;

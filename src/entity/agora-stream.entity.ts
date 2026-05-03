@@ -4,10 +4,10 @@ import { User } from "./user.entity";
 @Entity()
 export class AgoraStream {
     @PrimaryGeneratedColumn()
-    id: number;
+    id!: number;
 
     @Column({ length: 100 })
-    channelName: string;
+    channelName!: string;
 
     @ManyToOne(() => User, (u) => u.streams, {
         onDelete: "RESTRICT",

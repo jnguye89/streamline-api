@@ -47,7 +47,8 @@ export class VideoService {
   public async generateUploadUrl(
     fileName: string,
     mimeType: string,
+    keyRoot: string
   ): Promise<{ uploadUrl: string; key: string }> {
-    return await this.s3Service.generateUploadUrl(fileName, mimeType);
+    return await this.s3Service.generateUploadUrl(fileName, mimeType, keyRoot);
   }
 }
