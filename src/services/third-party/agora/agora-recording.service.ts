@@ -131,14 +131,29 @@ export class AgoraRecordingService {
             { headers: { Authorization: `Basic ${this.agoraTokenService.createBasicAuthToken()}` }, })
         );
 
+        var videoPath = data.serverResponse.fileList.find(f => f.fileName.endsWith('.mp4'))?.fileName;
+
+        if (!videoPath) {
+            console.error('No MP4 file found in Agora response:', data.serverResponse.fileList);
+            throw new Error('Recording stopped but no MP4 file found');
+        }
+
         const videoDto = {
             user: podcast.auth0UserId,
-            videoPath: data.serverResponse.fileList.find(f => f.fileName.endsWith('.mp4'))?.fileName
+            videoPath: videoPath
         } as VideoDto;
         //console.log('creating s3 video record: ', videoDto);
         await this.videoRepository.create(videoDto);
 
+        const fileName = videoPath.split('/').findLast(() => true); // extract file name from path
+        console.log('queuing video processing job for: ', fileName);
+
+        if (!fileName) {
+            console.error('No MP4 file found in Agora response:', data.serverResponse.fileList);
+            throw new Error('Recording stopped but no MP4 file found');
+        }
+
         // TODO: check for feature flag on user table (or wherever else features will be stored)
-        await this.videoQueueService.enqueueVideoProcessing(`${podcast.sid}${podcast.channelName}`);
+        await this.videoQueueService.enqueueVideoProcessing(fileName); // extract videoId from path
     }
 }

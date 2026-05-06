@@ -8,6 +8,8 @@
   "scripts": {
     "prebuild": "rm -rf dist",
     "build": "nest build",
+    "start:worker": "ts-node -r tsconfig-paths/register src/worker.ts",
+    "start:worker:dev": "ts-node-dev -r tsconfig-paths/register --respawn src/worker.ts",
     "start:prod": "npm install && npm run build && node dist/main.js",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
@@ -19,7 +21,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "process:video": "ts-node src/workers/video-processing.worker.ts"
+    "start:worker:prod": "node -r tsconfig-paths/register dist/worker.js"
   },
   "dependencies": {
     "@aws-sdk/client-ivs": "^3.830.0",

@@ -6,6 +6,13 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+export enum VideoStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+}
+
 @Entity()
 export class Video {
   @PrimaryGeneratedColumn()
@@ -16,6 +23,12 @@ export class Video {
 
   @Column({ length: 2083 })
   videoPath!: string;
+
+  @Column({ length: 2083, nullable: true })
+  processedPath?: string;
+
+  @Column({ type: 'enum', enum: VideoStatus, default: VideoStatus.PENDING })
+  status!: VideoStatus;
 
   /** Set automatically on INSERT */
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })

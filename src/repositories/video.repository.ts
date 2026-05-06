@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { VideoDto } from 'src/dto/video.dto';
-import { Video } from 'src/entity/video.entity';
+import { Video, VideoStatus } from 'src/entity/video.entity';
 import { Repository } from 'typeorm';
 
 @Injectable()
@@ -46,5 +46,16 @@ export class VideoRepository {
   async findAllByUserId(userId: string): Promise<VideoDto[]> {
     var result = await this.videoRepo.find({ where: { user: userId } });
     return [...result]
+  }
+
+  async updateProcessingStatus(
+    videoPath: string,
+    status: VideoStatus,
+    processedPath?: string,
+  ): Promise<void> {
+    await this.videoRepo.update(
+      { videoPath },
+      { status, ...(processedPath !== undefined ? { processedPath } : {}) },
+    );
   }
 }

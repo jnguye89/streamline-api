@@ -29,7 +29,6 @@ import { StreamService } from './services/stream.service';
 import { StreamRepository } from './repositories/stream.repository';
 import { WowzaService } from './services/third-party/wowza.service';
 import { StreamsEvents } from './services/third-party/streams.events';
-import { ScheduleModule } from '@nestjs/schedule';
 import { ThreadController } from './controllers/thread.controller';
 import { ThreadService } from './services/thread.service';
 import { ThreadRepository } from './repositories/thread.repository';
@@ -51,21 +50,20 @@ import { EventsGateway } from './controllers/events/events.gateway';
 import { AgoraStream } from './entity/agora-stream.entity';
 import { AgoraStreamRepository } from './repositories/agora-stream.repository';
 import { BullModule } from '@nestjs/bullmq';
-import { VideoProcessingProcessor } from './workers/video-processing.worker';
 import { VideoQueueService } from './services/video-queue.service';
 
 @Module({
   imports: [
     BullModule.forRoot({
       connection: {
-        host: 'localhost',
-        port: 6379
-      }
+        host: process.env.REDIS_HOST || 'localhost',
+        port: Number(process.env.REDIS_PORT || 6379),
+      },
     }),
     BullModule.registerQueue({
       name: 'video-processing',
     }),
-    ScheduleModule.forRoot(),
+    // ScheduleModule.forRoot(),
     // AutomapperModule.forFeature([VideoProfile]),
     PassportModule,
     MulterModule.register(multerConfig),
@@ -100,7 +98,6 @@ import { VideoQueueService } from './services/video-queue.service';
   ],
   providers: [
     VideoQueueService,
-    VideoProcessingProcessor,
     VoximplantService,
     VoxAuthService,
     VideoService,

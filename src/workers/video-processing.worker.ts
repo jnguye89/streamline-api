@@ -6,17 +6,22 @@ import ffmpeg from 'fluent-ffmpeg';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { VideoRepository } from 'src/repositories/video.repository';
+import { VideoStatus } from 'src/entity/video.entity';
 
-const s3 = new S3Client({
-  region: process.env.AWS_REGION,
-});
-
-const bucket = process.env.AWS_S3_BUCKET!;
-
-@Processor('video-processing')
+@Processor('video-processing', {
+  lockDuration: 300_000,  // 5 min — covers large file download + transcode
+  lockRenewTime: 120_000, // renew lock every 2 min
+})
 export class VideoProcessingProcessor extends WorkerHost {
+  private s3: S3Client;
+  private bucket: string;
+
   constructor(private videoRepository: VideoRepository) {
     super();
+    this.bucket = process.env.AWS_S3_BUCKET!;
+    this.s3 = new S3Client({
+      region: process.env.AWS_REGION,
+    });
   }
   async process(job: Job<{ videoId: string }>) {
     const { videoId } = job.data;
@@ -38,31 +43,33 @@ export class VideoProcessingProcessor extends WorkerHost {
       throw new Error('Missing videoId argument');
     }
 
-    const originalKey = `videos/original/${videoId}.mp4`;
-    const processedKey = `videos/processed/${videoId}.mp4`;
+    const originalKey = `videos/original/${videoId}`;
+    const processedKey = `videos/processed/${videoId}`;
 
     const tempDir = path.join(process.cwd(), 'tmp');
     fs.mkdirSync(tempDir, { recursive: true });
 
-    const inputPath = path.join(tempDir, `${videoId}-input.mp4`);
-    const outputPath = path.join(tempDir, `${videoId}-processed.mp4`);
+    const inputPath = path.join(tempDir, `${videoId.split('.')[0]}-input.mp4`);
+    const outputPath = path.join(tempDir, `${videoId.split('.')[0]}-processed.mp4`);
 
     try {
+      await this.videoRepository.updateProcessingStatus(originalKey, VideoStatus.PROCESSING);
+
       console.log('Downloading from S3...');
-      console.log(originalKey, inputPath);
       await this.downloadFromS3(originalKey, inputPath);
 
-      // this.videoRepository.
       console.log('Running FFmpeg...');
       await this.runFfmpeg(inputPath, outputPath);
 
       console.log('Uploading processed video...');
       await this.uploadToS3(outputPath, processedKey);
 
-      // TODO: Update video repository with processed video path
-      // need a new column with this property or just override the existing one?
-      // await this.videoRepository.updateVideoPath(videoId, processedKey);
+      await this.videoRepository.updateProcessingStatus(originalKey, VideoStatus.COMPLETED, processedKey);
       console.log('Done:', processedKey);
+    } catch (err) {
+      console.error('Video processing failed for key:', originalKey, err);
+      await this.videoRepository.updateProcessingStatus(originalKey, VideoStatus.FAILED);
+      throw err;
     } finally {
       if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
       if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
@@ -70,12 +77,10 @@ export class VideoProcessingProcessor extends WorkerHost {
   }
 
   private async downloadFromS3(key: string, localPath: string) {
-    console.log(bucket);
-    console.log(key);
-    // key = 'videos/original/4d79de1c1642d46584603ba8571f75f2_host-0amnjke8c87l_0.mp4';
-    const result = await s3.send(
+    console.log('Downloading S3 object:', key);
+    const result = await this.s3.send(
       new GetObjectCommand({
-        Bucket: bucket,
+        Bucket: this.bucket,
         Key: key,
       }),
     );
@@ -90,9 +95,9 @@ export class VideoProcessingProcessor extends WorkerHost {
   private async uploadToS3(localPath: string, key: string) {
     const fileStream = fs.createReadStream(localPath);
 
-    await s3.send(
+    await this.s3.send(
       new PutObjectCommand({
-        Bucket: bucket,
+        Bucket: this.bucket,
         Key: key,
         Body: fileStream,
         ContentType: 'video/mp4',
