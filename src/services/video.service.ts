@@ -20,6 +20,10 @@ export class VideoService {
     return Promise.all(
       videos.map(async (video) => {
         const url = await this.s3Service.getSignedUrl(video.videoPath);
+        if (!!video.processedPath) {
+          const processedUrl = await this.s3Service.getSignedUrl(video.processedPath);
+          return { ...video, videoPath: url, processedPath: processedUrl } as VideoDto;
+        }
         return { ...video, videoPath: url } as VideoDto;
       }),
     );
@@ -35,6 +39,10 @@ export class VideoService {
     return Promise.all(
       videos.map(async (video) => {
         const url = await this.s3Service.getSignedUrl(video.videoPath);
+        if (!!video.processedPath) {
+          const processedUrl = await this.s3Service.getSignedUrl(video.processedPath);
+          return { ...video, videoPath: url, processedPath: processedUrl } as VideoDto;
+        }
         return { ...video, videoPath: url } as VideoDto;
       }),
     );

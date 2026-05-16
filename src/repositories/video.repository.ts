@@ -31,9 +31,8 @@ export class VideoRepository {
 
   async findByVideoPath(path: string): Promise<VideoDto> {
     var result = await this.videoRepo.findOne({
-      where: {
-        videoPath: path
-      }
+      where: [{ videoPath: path },
+      { processedPath: path }]
     });
     return { ...result } as VideoDto;
   }

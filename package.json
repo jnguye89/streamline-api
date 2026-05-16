@@ -7,10 +7,10 @@
   "license": "UNLICENSED",
   "scripts": {
     "prebuild": "rm -rf dist",
-    "build": "nest build",
+    "build": "nest build && nest build --config nest-cli.worker.json",
     "start:worker": "ts-node -r tsconfig-paths/register src/worker.ts",
     "start:worker:dev": "ts-node-dev -r tsconfig-paths/register --respawn src/worker.ts",
-    "start:prod": "npm install && npm run build && node dist/main.js",
+    "start:prod": "node dist/main.js",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",

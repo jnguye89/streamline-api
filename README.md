@@ -4,6 +4,35 @@
 - Archive files `npm run archive`
 - Deploy `eb deploy`
 
+## Deploy ElastiCache Worker
+ElastiCache itself is just infrastructure — it's already running once created. I think you mean how to deploy the ECS worker. The flow is:
+
+1. Authenticate Docker to ECR:
+
+
+aws ecr get-login-password --region us-west-1 | \
+  docker login --username AWS --password-stdin \
+  578074109079.dkr.ecr.us-west-1.amazonaws.com
+2. Build, tag, and push the image:
+
+
+docker build -t streamline-api .
+docker tag streamline-api:latest 578074109079.dkr.ecr.us-west-1.amazonaws.com/streamline-api:latest
+docker push 578074109079.dkr.ecr.us-west-1.amazonaws.com/streamline-api:latest
+3. Force ECS to pull the new image:
+
+
+aws ecs update-service \
+  --cluster <your-cluster-name> \
+  --service <your-worker-service-name> \
+  --force-new-deployment \
+  --region us-west-1
+Replace <your-cluster-name> and <your-worker-service-name> with what you named them in the ECS console. If you don't remember:
+
+
+aws ecs list-clusters --region us-west-1
+aws ecs list-services --cluster <your-cluster-name> --region us-west-1
+
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>

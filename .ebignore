@@ -1,0 +1,3 @@
+Dockerfile
+.dockerignore
+nest-cli.worker.json
