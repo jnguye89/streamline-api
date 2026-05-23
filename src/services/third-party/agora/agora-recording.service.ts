@@ -116,7 +116,7 @@ export class AgoraRecordingService {
         return data.sid;
     }
 
-    async stopRecording(channelName: string) {
+    async stopRecording(channelName: string): Promise<string | undefined> {
         const podcast = await this.podcastRepository.getPodcast(channelName);
         const url = `${this.baseUrl}/${process.env.AGORA_APP_ID}/cloud_recording/resourceid/${encodeURIComponent(podcast.resourceId)}/sid/${podcast.sid}/mode/mix/stop`;
 
@@ -145,11 +145,15 @@ export class AgoraRecordingService {
         //console.log('creating s3 video record: ', videoDto);
         await this.videoRepository.create(videoDto);
 
-        const fileName = videoPath.split('/').findLast(() => true); // extract file name from path
+        return videoPath.split('/').findLast(() => true); // extract file name from path;
+    }
+
+    public async processVideo(fileName: string) {
+
         console.log('queuing video processing job for: ', fileName);
 
         if (!fileName) {
-            console.error('No MP4 file found in Agora response:', data.serverResponse.fileList);
+            // console.error('No MP4 file found in Agora response:', data.serverResponse.fileList);
             throw new Error('Recording stopped but no MP4 file found');
         }
 

@@ -80,7 +80,13 @@ export default class StreamController {
         // }
         stream.status = 'ended';
         await this.agoraStreamRepository.save(stream);
-        await this.agoraRecordingService.stopRecording(channelName);
+        var filename = await this.agoraRecordingService.stopRecording(channelName);
+        return { filename: filename, ok: true };
+    }
+
+    @Post('process')
+    async processVideo(@Body() dto: { fileName: string }) {
+        await this.agoraRecordingService.processVideo(dto.fileName);
         return { ok: true };
     }
 }
