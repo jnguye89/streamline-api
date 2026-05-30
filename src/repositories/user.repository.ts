@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Auth0UserDto } from "src/dto/auth0-user.dto";
 import { User } from "src/entity/user.entity";
-import { Repository } from "typeorm";
+import { Like, Repository } from "typeorm";
 
 @Injectable()
 export class UserRepository {
@@ -60,5 +60,12 @@ export class UserRepository {
         })
 
         return { ...user } as Auth0UserDto;
+    }
+
+    async searchByUsername(query: string): Promise<{ username: string; auth0UserId: string }[]> {
+        return await this.userRepo.find({
+            where: { username: Like(`%${query}%`) },
+            select: { username: true, auth0UserId: true },
+        });
     }
 }

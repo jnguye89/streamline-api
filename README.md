@@ -27,6 +27,15 @@ aws ecs update-service \
   --service <your-worker-service-name> \
   --force-new-deployment \
   --region us-west-1
+
+```
+aws ecs update-service \
+  --cluster arn:aws:ecs:us-west-1:578074109079:cluster/default \
+  --service arn:aws:ecs:us-west-1:578074109079:service/default/streamline-worker \
+  --force-new-deployment \
+  --region us-west-1
+```
+
 Replace <your-cluster-name> and <your-worker-service-name> with what you named them in the ECS console. If you don't remember:
 
 

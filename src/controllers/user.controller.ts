@@ -1,4 +1,5 @@
-import { Controller, Get, Param } from "@nestjs/common";
+import { Controller, Get, Param, Query } from "@nestjs/common";
+import { Public } from "src/auth/public.decorator";
 import { UserService } from "src/services/user.service";
 
 @Controller('user')
@@ -18,6 +19,12 @@ export class UserController {
     @Get('agora/:agoraId')
     async getAgoraUser(@Param('agoraId') id: number) {
         return this.userService.getAgoraUser(id);
+    }
+
+    @Get('search')
+    @Public()
+    async search(@Query('q') query: string) {
+        return this.userService.searchUsers(query);
     }
 
 }

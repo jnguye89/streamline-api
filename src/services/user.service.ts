@@ -41,4 +41,8 @@ export class UserService {
     async getAgoraUser(agoraId: number): Promise<Auth0UserDto> {
         return await this.userRepo.getAgoraUser(agoraId);
     }
+
+    async searchUsers(query: string): Promise<{ username: string; auth0UserId: string }[]> {
+        return await this.userRepo.searchByUsername(query);
+    }
 }
