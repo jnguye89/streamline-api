@@ -37,6 +37,8 @@ import { User } from './entity/user.entity';
 import { UserRepository } from './repositories/user.repository';
 import { UserService } from './services/user.service';
 import { Auth0Service } from './services/third-party/auth0.service';
+import { DeviceAuthService } from './services/device-auth.service';
+import { DeviceAuthController } from './controllers/device-auth/device-auth.controller';
 import { ErrorLog } from './entity/error-log.entity';
 import { LogService } from './services/log.service';
 import { CallController } from './controllers/call/call.controller';
@@ -94,7 +96,8 @@ import { VideoQueueService } from './services/video-queue.service';
     UserIntegrationController,
     ThreadController,
     CallController,
-    UserController
+    UserController,
+    DeviceAuthController,
   ],
   providers: [
     VideoQueueService,
@@ -124,7 +127,8 @@ import { VideoQueueService } from './services/video-queue.service';
     AgoraTokenService,
     AgoraRecordingService,
     EventsService,
-    EventsGateway
+    EventsGateway,
+    DeviceAuthService,
   ],
   exports: [VideoQueueService]
 })
