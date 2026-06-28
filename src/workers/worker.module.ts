@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { VideoProcessingProcessor } from './video-processing.worker';
 import { VideoRepository } from 'src/repositories/video.repository';
 import { Video } from 'src/entity/video.entity';
+import { ElevenLabsService } from 'src/services/third-party/elevenlabs.service';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { Video } from 'src/entity/video.entity';
   providers: [
     VideoProcessingProcessor,
     VideoRepository,
+    ElevenLabsService,
   ],
 })
 export class WorkerModule {}

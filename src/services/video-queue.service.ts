@@ -12,7 +12,7 @@ export class VideoQueueService {
   async enqueueVideoProcessing(videoId: string) {
     await this.videoQueue.add(
       'process-video',
-      { videoId },
+      { videoId, configs: { elevenLabs: true } },
       {
         attempts: 3,
         backoff: {

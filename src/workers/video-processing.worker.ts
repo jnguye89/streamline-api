@@ -7,6 +7,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { VideoRepository } from 'src/repositories/video.repository';
 import { VideoStatus } from 'src/entity/video.entity';
+import { ElevenLabsService } from 'src/services/third-party/elevenlabs.service';
 
 @Processor('video-processing', {
   lockDuration: 300_000,  // 5 min — covers large file download + transcode
@@ -57,7 +58,7 @@ export class VideoProcessingProcessor extends WorkerHost {
     },
   };
 
-  constructor(private videoRepository: VideoRepository) {
+  constructor(private videoRepository: VideoRepository, private elevenLabsService: ElevenLabsService) {
     super();
 
     this.bucket = process.env.AWS_S3_BUCKET!;
@@ -66,19 +67,117 @@ export class VideoProcessingProcessor extends WorkerHost {
     });
   }
 
-  async process(job: Job<{ videoId: string }>) {
-    const { videoId } = job.data;
+  async process(job: Job<{ videoId: string, configs: { elevenLabs: boolean } }>) {
+    const { videoId, configs } = job.data;
 
     console.log('Processing video:', videoId);
-
-    await this.processVideo(videoId, String(job.id ?? Date.now()));
-  }
-
-  private async processVideo(videoId: string, jobId: string) {
     if (!videoId) {
       throw new Error('Missing videoId argument');
     }
 
+    if (configs.elevenLabs) {
+      await this.processVideoWithElevenLabs(videoId, String(job.id ?? Date.now()));
+    } else {
+      await this.processVideo(videoId, String(job.id ?? Date.now()));
+    }
+  }
+
+  private async processVideoWithElevenLabs(videoId: string, jobId: string) {
+    const originalKey = `videos/original/${videoId}`;
+
+    const parsedVideo = path.parse(path.basename(videoId));
+    const safeBaseName = parsedVideo.name.replace(/[^a-zA-Z0-9-_]/g, '_');
+
+    const processedFileName = `${safeBaseName}.mp4`;
+    const processedKey = `videos/processed/${processedFileName}`;
+
+    const tempDir = path.join(process.cwd(), 'tmp');
+    fs.mkdirSync(tempDir, { recursive: true });
+
+    const uniquePrefix = `${safeBaseName}-${jobId}-${Date.now()}`;
+
+    const inputPath = path.join(
+      tempDir,
+      `${uniquePrefix}-input${parsedVideo.ext || '.mp4'}`,
+    );
+
+    const extractedAudioPath = path.join(
+      tempDir,
+      `${uniquePrefix}-extracted-audio.wav`,
+    );
+
+    const isolatedAudioPath = path.join(
+      tempDir,
+      `${uniquePrefix}-isolated-audio.wav`,
+    );
+
+    const videoOnlyPath = path.join(
+      tempDir,
+      `${uniquePrefix}-video-only.mp4`,
+    );
+
+    const outputPath = path.join(
+      tempDir,
+      `${uniquePrefix}-processed.mp4`,
+    );
+
+    try {
+      await this.videoRepository.updateProcessingStatus(
+        originalKey,
+        VideoStatus.PROCESSING,
+      );
+
+      console.log('Downloading from S3...');
+      await this.downloadFromS3(originalKey, inputPath);
+
+      console.log('Extracting audio from video...');
+      await this.extractAudioFromVideo(inputPath, extractedAudioPath);
+
+      console.log('Sending audio to ElevenLabs...');
+      await this.elevenLabsService.isolateAudio(
+        extractedAudioPath,
+        isolatedAudioPath,
+      );
+
+      console.log('Rendering video without audio...');
+      await this.renderVideoOnly(inputPath, videoOnlyPath);
+
+      console.log('Combining cleaned audio with video...');
+      await this.muxVideoWithCleanAudio(
+        videoOnlyPath,
+        isolatedAudioPath,
+        outputPath,
+      );
+
+      console.log('Uploading processed video...');
+      await this.uploadToS3(outputPath, processedKey);
+
+      await this.videoRepository.updateProcessingStatus(
+        originalKey,
+        VideoStatus.COMPLETED,
+        processedKey,
+      );
+
+      console.log('Done:', processedKey);
+    } catch (err) {
+      console.error('ElevenLabs video processing failed:', originalKey, err);
+
+      await this.videoRepository.updateProcessingStatus(
+        originalKey,
+        VideoStatus.FAILED,
+      );
+
+      throw err;
+    } finally {
+      this.safeDeleteFile(inputPath);
+      this.safeDeleteFile(extractedAudioPath);
+      this.safeDeleteFile(isolatedAudioPath);
+      this.safeDeleteFile(videoOnlyPath);
+      this.safeDeleteFile(outputPath);
+    }
+  }
+
+  private async processVideo(videoId: string, jobId: string) {
     const originalKey = `videos/original/${videoId}`;
 
     /**
@@ -277,5 +376,116 @@ export class VideoProcessingProcessor extends WorkerHost {
     } catch (err) {
       console.warn('Failed to delete temp file:', filePath, err);
     }
+  }
+
+  private async extractAudioFromVideo(
+    inputPath: string,
+    outputAudioPath: string,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      ffmpeg(inputPath)
+        .noVideo()
+        .audioCodec('pcm_s16le')
+        .audioFrequency(44100)
+        .audioChannels(1)
+        .format('wav')
+        .on('start', (cmd) => {
+          console.log('FFmpeg audio extraction started:', cmd);
+        })
+        .on('error', (err) => {
+          console.error('FFmpeg audio extraction error:', err);
+          reject(err);
+        })
+        .on('end', () => {
+          console.log('Audio extracted:', outputAudioPath);
+          resolve();
+        })
+        .save(outputAudioPath);
+    });
+  }
+  private async renderVideoOnly(
+    inputPath: string,
+    outputVideoPath: string,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      ffmpeg(inputPath)
+        .videoFilters(this.buildVideoFilters())
+        .videoCodec('libx264')
+        .noAudio()
+        .format('mp4')
+        .outputOptions([
+          `-crf ${this.ffmpegSettings.output.crf}`,
+          `-preset ${this.ffmpegSettings.output.preset}`,
+          '-movflags +faststart',
+          '-pix_fmt yuv420p',
+        ])
+        .on('start', (cmd) => {
+          console.log('FFmpeg video-only render started:', cmd);
+        })
+        .on('progress', (progress) => {
+          if (progress.percent) {
+            console.log(
+              `Video-only render progress: ${progress.percent.toFixed(2)}%`,
+            );
+          }
+        })
+        .on('error', (err) => {
+          console.error('FFmpeg video-only render error:', err);
+          reject(err);
+        })
+        .on('end', () => {
+          console.log('Video-only render completed:', outputVideoPath);
+          resolve();
+        })
+        .save(outputVideoPath);
+    });
+  }
+  private async muxVideoWithCleanAudio(
+    videoOnlyPath: string,
+    cleanedAudioPath: string,
+    outputPath: string,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      ffmpeg()
+        .input(videoOnlyPath)
+        .input(cleanedAudioPath)
+        .outputOptions([
+          '-map 0:v:0',
+          '-map 1:a:0',
+          '-shortest',
+          '-movflags +faststart',
+        ])
+        .videoCodec('copy')
+        .audioCodec('aac')
+        .audioFilters(this.buildPostIsolationAudioFilters())
+        .format('mp4')
+        .on('start', (cmd) => {
+          console.log('FFmpeg mux started:', cmd);
+        })
+        .on('error', (err) => {
+          console.error('FFmpeg mux error:', err);
+          reject(err);
+        })
+        .on('end', () => {
+          console.log('Mux completed:', outputPath);
+          resolve();
+        })
+        .save(outputPath);
+    });
+  }
+  private buildPostIsolationAudioFilters(): string[] {
+    const filters: string[] = [];
+
+    filters.push(`volume=${this.ffmpegSettings.audio.volume}`);
+
+    filters.push(
+      [
+        `loudnorm=I=${this.ffmpegSettings.audio.loudnessTarget}`,
+        `TP=${this.ffmpegSettings.audio.truePeak}`,
+        `LRA=${this.ffmpegSettings.audio.loudnessRange}`,
+      ].join(':'),
+    );
+
+    return filters;
   }
 }
