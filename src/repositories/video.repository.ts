@@ -47,6 +47,11 @@ export class VideoRepository {
     return [...result]
   }
 
+  async softDelete(id: number): Promise<void> {
+    console.log('repo', id);
+    await this.videoRepo.softDelete(id);
+  }
+
   async updateProcessingStatus(
     videoPath: string,
     status: VideoStatus,

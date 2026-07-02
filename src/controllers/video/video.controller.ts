@@ -1,6 +1,8 @@
 import {
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Post,
   Param,
   Body,
@@ -36,6 +38,12 @@ export class VideoController {
       'arn:aws:ivs:us-west-2:578074109079:channel/kqI34tnoji5s';
     const isLive = await this.ivsService.isStreamLive(channelArn);
     return { isLive };
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  async deleteVideo(@Param('id') id: string): Promise<void> {
+    await this.videoService.deleteVideo(Number(id));
   }
 
   @Post('presign')

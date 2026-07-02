@@ -48,6 +48,11 @@ export class VideoService {
     );
   }
 
+  async deleteVideo(id: number): Promise<void> {
+    console.log(id);
+    await this.videoRepository.softDelete(id);
+  }
+
   async uploadVideoToDb(video: VideoDto): Promise<VideoDto> {
     return this.videoRepository.create(video);
   }
