@@ -8,6 +8,8 @@ import {
   Body,
 } from '@nestjs/common';
 import { Public } from './../../auth/public.decorator';
+import { User } from './../../auth/user.decorator';
+import { UserModel } from 'src/models/user.model';
 import { VideoService } from 'src/services/video.service';
 import { VideoDto } from 'src/dto/video.dto';
 import { IvsService } from 'src/services/third-party/ivs.services';
@@ -38,6 +40,17 @@ export class VideoController {
       'arn:aws:ivs:us-west-2:578074109079:channel/kqI34tnoji5s';
     const isLive = await this.ivsService.isStreamLive(channelArn);
     return { isLive };
+  }
+
+  @Post()
+  async createVideo(
+    @User() user: UserModel,
+    @Body() body: { key: string },
+  ): Promise<VideoDto> {
+    return await this.videoService.uploadVideoToDb({
+      user: user.userId,
+      videoPath: body.key,
+    });
   }
 
   @Delete(':id')
