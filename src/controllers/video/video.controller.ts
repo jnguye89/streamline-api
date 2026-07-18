@@ -6,9 +6,12 @@ import {
   Post,
   Param,
   Body,
+  UseGuards,
 } from '@nestjs/common';
 import { Public } from './../../auth/public.decorator';
 import { User } from './../../auth/user.decorator';
+import { OptionalUser } from './../../auth/optional-user.decorator';
+import { OptionalJwtAuthGuard } from './../../auth/optional-jwt-auth.guard';
 import { UserModel } from 'src/models/user.model';
 import { VideoService } from 'src/services/video.service';
 import { VideoDto } from 'src/dto/video.dto';
@@ -23,8 +26,9 @@ export class VideoController {
 
   @Get()
   @Public()
-  async getAllVideos(): Promise<VideoDto[]> {
-    return await this.videoService.getAllVideos();
+  @UseGuards(OptionalJwtAuthGuard)
+  async getAllVideos(@OptionalUser() user: UserModel | null): Promise<VideoDto[]> {
+    return await this.videoService.getAllVideos(user?.userId);
   }
 
   @Get('user/:id')
@@ -57,6 +61,16 @@ export class VideoController {
   @HttpCode(204)
   async deleteVideo(@Param('id') id: string): Promise<void> {
     await this.videoService.deleteVideo(Number(id));
+  }
+
+  @Post(':id/progress')
+  @HttpCode(204)
+  async updateProgress(
+    @User() user: UserModel,
+    @Param('id') id: string,
+    @Body() body: { timestamp: number },
+  ): Promise<void> {
+    await this.videoService.saveProgress(user.userId, Number(id), body.timestamp);
   }
 
   @Post('presign')

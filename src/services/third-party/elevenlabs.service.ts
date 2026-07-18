@@ -8,6 +8,23 @@ import FormData = require('form-data');
 export class ElevenLabsService {
     private readonly apiKey = process.env.ELEVENLABS_API_KEY;
 
+    async getConvaiSignedUrl(agentId: string): Promise<string> {
+        if (!this.apiKey) {
+            throw new Error('Missing ELEVENLABS_API_KEY environment variable');
+        }
+        console.log('getconvaiSignedUrl', agentId);
+
+        const response = await axios.get<{ signed_url: string }>(
+            `https://api.elevenlabs.io/v1/convai/conversation/get_signed_url`,
+            {
+                params: { agent_id: agentId },
+                headers: { 'xi-api-key': this.apiKey },
+            },
+        );
+
+        return response.data.signed_url;
+    }
+
     async isolateAudio(
         inputAudioPath: string,
         outputAudioPath: string,

@@ -13,7 +13,9 @@ import { JwtStrategy } from './auth/jwt.strategy';
 import { S3Service } from './services/third-party/s3.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { VideoRepository } from './repositories/video.repository';
+import { VideoProgressRepository } from './repositories/video-progress.repository';
 import { Video } from './entity/video.entity';
+import { VideoProgress } from './entity/video-progress.entity';
 import { Audio } from './entity/audio.entity';
 import { IvsService } from './services/third-party/ivs.services';
 import { AudioRepository } from './repositories/audio.repository';
@@ -39,6 +41,8 @@ import { UserService } from './services/user.service';
 import { Auth0Service } from './services/third-party/auth0.service';
 import { DeviceAuthService } from './services/device-auth.service';
 import { DeviceAuthController } from './controllers/device-auth/device-auth.controller';
+import { ElevenLabsController } from './controllers/elevenlabs.controller';
+import { ElevenLabsService } from './services/third-party/elevenlabs.service';
 import { ErrorLog } from './entity/error-log.entity';
 import { LogService } from './services/log.service';
 import { CallController } from './controllers/call/call.controller';
@@ -86,7 +90,7 @@ import { VideoQueueService } from './services/video-queue.service';
       autoLoadEntities: true,
       synchronize: true, // turn off in prod
     }),
-    TypeOrmModule.forFeature([Video, Audio, User_Integration, Stream, AgoraStream, Thread, User, ErrorLog, Podcast]),
+    TypeOrmModule.forFeature([Video, VideoProgress, Audio, User_Integration, Stream, AgoraStream, Thread, User, ErrorLog, Podcast]),
   ],
   controllers: [
     AppController,
@@ -98,6 +102,7 @@ import { VideoQueueService } from './services/video-queue.service';
     CallController,
     UserController,
     DeviceAuthController,
+    ElevenLabsController,
   ],
   providers: [
     VideoQueueService,
@@ -109,6 +114,7 @@ import { VideoQueueService } from './services/video-queue.service';
     JwtStrategy,
     S3Service,
     VideoRepository,
+    VideoProgressRepository,
     StreamRepository,
     AgoraStreamRepository,
     IvsService,
@@ -129,6 +135,7 @@ import { VideoQueueService } from './services/video-queue.service';
     EventsService,
     EventsGateway,
     DeviceAuthService,
+    ElevenLabsService,
   ],
   exports: [VideoQueueService]
 })
