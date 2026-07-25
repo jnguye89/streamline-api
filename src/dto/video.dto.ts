@@ -7,4 +7,6 @@ export class VideoDto {
   processedPath?: string;
   status?: VideoStatus;
   resumeTimestamp?: number;
+  viewCount?: number;
+  likeCount?: number;
 }

@@ -63,6 +63,14 @@ export class VideoRepository {
     return rows.map((row) => row.id);
   }
 
+  async incrementViewCount(id: number, amount: number): Promise<void> {
+    await this.videoRepo.increment({ id }, 'viewCount', amount);
+  }
+
+  async incrementLikeCount(id: number, amount: number): Promise<void> {
+    await this.videoRepo.increment({ id }, 'likeCount', amount);
+  }
+
   async softDelete(id: number): Promise<void> {
     console.log('repo', id);
     await this.videoRepo.softDelete(id);

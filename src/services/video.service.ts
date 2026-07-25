@@ -9,6 +9,10 @@ import { VideoDto } from 'src/dto/video.dto';
 const DEFAULT_FEED_LIMIT = 20;
 const MAX_FEED_LIMIT = 100;
 
+function randomEngagementAmount(): number {
+  return Math.floor(Math.random() * 100) + 1;
+}
+
 @Injectable()
 export class VideoService implements OnModuleInit {
   constructor(
@@ -64,6 +68,17 @@ export class VideoService implements OnModuleInit {
 
   async saveProgress(userId: string, videoId: number, timestamp: number): Promise<void> {
     await this.videoProgressRepository.upsertProgress(userId, videoId, timestamp);
+  }
+
+  // Not tied to real viewer/like counts yet - each call bumps the counter by
+  // a random amount to seed apparent engagement until this is wired to
+  // actual per-user views/likes.
+  async recordView(id: number): Promise<void> {
+    await this.videoRepository.incrementViewCount(id, randomEngagementAmount());
+  }
+
+  async recordLike(id: number): Promise<void> {
+    await this.videoRepository.incrementLikeCount(id, randomEngagementAmount());
   }
 
   async getVideoByPath(videoPath: string): Promise<VideoDto> {

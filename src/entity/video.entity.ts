@@ -31,6 +31,12 @@ export class Video {
   @Column({ type: 'enum', enum: VideoStatus, default: VideoStatus.PENDING })
   status!: VideoStatus;
 
+  @Column({ type: 'int', default: 0 })
+  viewCount!: number;
+
+  @Column({ type: 'int', default: 0 })
+  likeCount!: number;
+
   /** Set automatically on INSERT */
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   createdAt!: Date;

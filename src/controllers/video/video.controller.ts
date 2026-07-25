@@ -82,6 +82,20 @@ export class VideoController {
     await this.videoService.saveProgress(user.userId, Number(id), body.timestamp);
   }
 
+  @Post(':id/view')
+  @Public()
+  @HttpCode(204)
+  async recordView(@Param('id') id: string): Promise<void> {
+    await this.videoService.recordView(Number(id));
+  }
+
+  @Post(':id/like')
+  @Public()
+  @HttpCode(204)
+  async recordLike(@Param('id') id: string): Promise<void> {
+    await this.videoService.recordLike(Number(id));
+  }
+
   @Post('presign')
   async getUploadPresignedUrl(
     @Body() body: { fileName: string; mimeType: string },
