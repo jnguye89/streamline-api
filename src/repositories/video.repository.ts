@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { VideoDto } from 'src/dto/video.dto';
 import { Video, VideoStatus } from 'src/entity/video.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 @Injectable()
 export class VideoRepository {
@@ -45,6 +45,22 @@ export class VideoRepository {
   async findAllByUserId(userId: string): Promise<VideoDto[]> {
     var result = await this.videoRepo.find({ where: { user: userId } });
     return [...result]
+  }
+
+  /** Fetches videos by id, preserving the given order and silently dropping ids that no longer exist (e.g. soft-deleted). */
+  async findByIds(ids: number[]): Promise<VideoDto[]> {
+    if (ids.length === 0) return [];
+    const entities = await this.videoRepo.find({ where: { id: In(ids) } });
+    const byId = new Map(entities.map((entity) => [entity.id, entity]));
+    return ids
+      .map((id) => byId.get(id))
+      .filter((video): video is Video => !!video)
+      .map((video) => ({ ...video }));
+  }
+
+  async findAllIds(): Promise<number[]> {
+    const rows = await this.videoRepo.find({ select: ['id'] });
+    return rows.map((row) => row.id);
   }
 
   async softDelete(id: number): Promise<void> {

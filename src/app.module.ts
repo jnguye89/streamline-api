@@ -57,6 +57,8 @@ import { AgoraStream } from './entity/agora-stream.entity';
 import { AgoraStreamRepository } from './repositories/agora-stream.repository';
 import { BullModule } from '@nestjs/bullmq';
 import { VideoQueueService } from './services/video-queue.service';
+import { VideoFeedRepository } from './repositories/video-feed.repository';
+import Redis from 'ioredis';
 
 @Module({
   imports: [
@@ -105,6 +107,15 @@ import { VideoQueueService } from './services/video-queue.service';
     ElevenLabsController,
   ],
   providers: [
+    {
+      provide: 'REDIS_CLIENT',
+      useFactory: () =>
+        new Redis({
+          host: process.env.REDIS_HOST || 'localhost',
+          port: Number(process.env.REDIS_PORT || 6379),
+        }),
+    },
+    VideoFeedRepository,
     VideoQueueService,
     VoximplantService,
     VoxAuthService,

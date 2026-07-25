@@ -39,4 +39,13 @@ export class VideoProgressRepository {
       where: { userId, videoId: In(videoIds) },
     });
   }
+
+  async findMostRecentByUser(userId: string): Promise<VideoProgress | null> {
+    const [mostRecent] = await this.videoProgressRepo.find({
+      where: { userId },
+      order: { updatedAt: 'DESC' },
+      take: 1,
+    });
+    return mostRecent ?? null;
+  }
 }

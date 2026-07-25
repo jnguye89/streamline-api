@@ -5,6 +5,7 @@ import {
   HttpCode,
   Post,
   Param,
+  Query,
   Body,
   UseGuards,
 } from '@nestjs/common';
@@ -27,8 +28,16 @@ export class VideoController {
   @Get()
   @Public()
   @UseGuards(OptionalJwtAuthGuard)
-  async getAllVideos(@OptionalUser() user: UserModel | null): Promise<VideoDto[]> {
-    return await this.videoService.getAllVideos(user?.userId);
+  async getAllVideos(
+    @OptionalUser() user: UserModel | null,
+    @Query('limit') limit?: string,
+  ): Promise<VideoDto[]> {
+    return await this.videoService.getAllVideos(user?.userId, limit ? Number(limit) : undefined);
+  }
+
+  @Get('continue-watching')
+  async getContinueWatching(@User() user: UserModel): Promise<VideoDto | null> {
+    return await this.videoService.getContinueWatching(user.userId);
   }
 
   @Get('user/:id')
