@@ -14,8 +14,10 @@ import { S3Service } from './services/third-party/s3.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { VideoRepository } from './repositories/video.repository';
 import { VideoProgressRepository } from './repositories/video-progress.repository';
+import { VideoLikeRepository } from './repositories/video-like.repository';
 import { Video } from './entity/video.entity';
 import { VideoProgress } from './entity/video-progress.entity';
+import { VideoLike } from './entity/video-like.entity';
 import { Audio } from './entity/audio.entity';
 import { IvsService } from './services/third-party/ivs.services';
 import { AudioRepository } from './repositories/audio.repository';
@@ -56,8 +58,10 @@ import { EventsGateway } from './controllers/events/events.gateway';
 import { AgoraStream } from './entity/agora-stream.entity';
 import { AgoraStreamRepository } from './repositories/agora-stream.repository';
 import { BullModule } from '@nestjs/bullmq';
+import { ScheduleModule } from '@nestjs/schedule';
 import { VideoQueueService } from './services/video-queue.service';
 import { VideoFeedRepository } from './repositories/video-feed.repository';
+import { VideoEngagementSchedulerService } from './services/video-engagement-scheduler.service';
 import Redis from 'ioredis';
 
 @Module({
@@ -71,7 +75,7 @@ import Redis from 'ioredis';
     BullModule.registerQueue({
       name: 'video-processing',
     }),
-    // ScheduleModule.forRoot(),
+    ScheduleModule.forRoot(),
     // AutomapperModule.forFeature([VideoProfile]),
     PassportModule,
     MulterModule.register(multerConfig),
@@ -92,7 +96,7 @@ import Redis from 'ioredis';
       autoLoadEntities: true,
       synchronize: true, // turn off in prod
     }),
-    TypeOrmModule.forFeature([Video, VideoProgress, Audio, User_Integration, Stream, AgoraStream, Thread, User, ErrorLog, Podcast]),
+    TypeOrmModule.forFeature([Video, VideoProgress, VideoLike, Audio, User_Integration, Stream, AgoraStream, Thread, User, ErrorLog, Podcast]),
   ],
   controllers: [
     AppController,
@@ -117,6 +121,7 @@ import Redis from 'ioredis';
     },
     VideoFeedRepository,
     VideoQueueService,
+    VideoEngagementSchedulerService,
     VoximplantService,
     VoxAuthService,
     VideoService,
@@ -126,6 +131,7 @@ import Redis from 'ioredis';
     S3Service,
     VideoRepository,
     VideoProgressRepository,
+    VideoLikeRepository,
     StreamRepository,
     AgoraStreamRepository,
     IvsService,

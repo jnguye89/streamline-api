@@ -91,9 +91,13 @@ export class VideoController {
 
   @Post(':id/like')
   @Public()
+  @UseGuards(OptionalJwtAuthGuard)
   @HttpCode(204)
-  async recordLike(@Param('id') id: string): Promise<void> {
-    await this.videoService.recordLike(Number(id));
+  async recordLike(
+    @OptionalUser() user: UserModel | null,
+    @Param('id') id: string,
+  ): Promise<void> {
+    await this.videoService.recordLike(Number(id), user?.userId);
   }
 
   @Post('presign')

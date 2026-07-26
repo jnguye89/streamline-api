@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { S3Service } from './third-party/s3.service';
 import { VideoRepository } from 'src/repositories/video.repository';
 import { VideoProgressRepository } from 'src/repositories/video-progress.repository';
+import { VideoLikeRepository } from 'src/repositories/video-like.repository';
 import { VideoFeedRepository } from 'src/repositories/video-feed.repository';
 import { Video } from 'src/entity/video.entity';
 import { VideoDto } from 'src/dto/video.dto';
@@ -19,6 +20,7 @@ export class VideoService implements OnModuleInit {
     private s3Service: S3Service,
     private videoRepository: VideoRepository,
     private videoProgressRepository: VideoProgressRepository,
+    private videoLikeRepository: VideoLikeRepository,
     private videoFeedRepository: VideoFeedRepository,
   ) { }
 
@@ -39,18 +41,22 @@ export class VideoService implements OnModuleInit {
     const videos = await this.videoRepository.findByIds(ids);
 
     const progressByVideoId = new Map<number, number>();
+    let likedVideoIds = new Set<number>();
     if (userId) {
-      const progress = await this.videoProgressRepository.findByUserAndVideoIds(
-        userId,
-        videos.map((video) => video.id as number),
-      );
+      const videoIds = videos.map((video) => video.id as number);
+      const [progress, likedIds] = await Promise.all([
+        this.videoProgressRepository.findByUserAndVideoIds(userId, videoIds),
+        this.videoLikeRepository.findLikedVideoIds(userId, videoIds),
+      ]);
       progress.forEach((entry) => progressByVideoId.set(entry.videoId, entry.timestamp));
+      likedVideoIds = new Set(likedIds);
     }
 
     return Promise.all(
       videos.map(async (video) => {
         const resumeTimestamp = progressByVideoId.get(video.id as number) ?? 0;
-        return { ...(await this.attachSignedUrls(video)), resumeTimestamp } as VideoDto;
+        const liked = likedVideoIds.has(video.id as number);
+        return { ...(await this.attachSignedUrls(video)), resumeTimestamp, liked } as VideoDto;
       }),
     );
   }
@@ -63,7 +69,12 @@ export class VideoService implements OnModuleInit {
     const [video] = await this.videoRepository.findByIds([progress.videoId]);
     if (!video) return null;
 
-    return { ...(await this.attachSignedUrls(video)), resumeTimestamp: progress.timestamp } as VideoDto;
+    const likedIds = await this.videoLikeRepository.findLikedVideoIds(userId, [progress.videoId]);
+    return {
+      ...(await this.attachSignedUrls(video)),
+      resumeTimestamp: progress.timestamp,
+      liked: likedIds.length > 0,
+    } as VideoDto;
   }
 
   async saveProgress(userId: string, videoId: number, timestamp: number): Promise<void> {
@@ -77,8 +88,14 @@ export class VideoService implements OnModuleInit {
     await this.videoRepository.incrementViewCount(id, randomEngagementAmount());
   }
 
-  async recordLike(id: number): Promise<void> {
+  // The count always goes up regardless of login state; the per-user "liked"
+  // record (used only to show the user they've liked it before) is only
+  // saved when we have an identity to attach it to.
+  async recordLike(id: number, userId?: string): Promise<void> {
     await this.videoRepository.incrementLikeCount(id, randomEngagementAmount());
+    if (userId) {
+      await this.videoLikeRepository.markLiked(userId, id);
+    }
   }
 
   async getVideoByPath(videoPath: string): Promise<VideoDto> {

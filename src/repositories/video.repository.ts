@@ -71,6 +71,19 @@ export class VideoRepository {
     await this.videoRepo.increment({ id }, 'likeCount', amount);
   }
 
+  /** Bumps every active video's counters by an independent random 1-100 amount, in one statement regardless of library size. */
+  async boostAllEngagement(): Promise<void> {
+    await this.videoRepo
+      .createQueryBuilder()
+      .update(Video)
+      .set({
+        viewCount: () => 'viewCount + FLOOR(1 + RAND() * 100)',
+        likeCount: () => 'likeCount + FLOOR(1 + RAND() * 100)',
+      })
+      .where('deletedAt IS NULL')
+      .execute();
+  }
+
   async softDelete(id: number): Promise<void> {
     console.log('repo', id);
     await this.videoRepo.softDelete(id);
