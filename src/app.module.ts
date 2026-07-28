@@ -15,9 +15,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { VideoRepository } from './repositories/video.repository';
 import { VideoProgressRepository } from './repositories/video-progress.repository';
 import { VideoLikeRepository } from './repositories/video-like.repository';
+import { StreamKeyRepository } from './repositories/stream-key.repository';
+import { StreamKeyService } from './services/stream-key.service';
+import { StreamKeyController } from './controllers/stream-key.controller';
 import { Video } from './entity/video.entity';
 import { VideoProgress } from './entity/video-progress.entity';
 import { VideoLike } from './entity/video-like.entity';
+import { StreamKey } from './entity/stream-key.entity';
 import { Audio } from './entity/audio.entity';
 import { IvsService } from './services/third-party/ivs.services';
 import { AudioRepository } from './repositories/audio.repository';
@@ -96,7 +100,7 @@ import Redis from 'ioredis';
       autoLoadEntities: true,
       synchronize: true, // turn off in prod
     }),
-    TypeOrmModule.forFeature([Video, VideoProgress, VideoLike, Audio, User_Integration, Stream, AgoraStream, Thread, User, ErrorLog, Podcast]),
+    TypeOrmModule.forFeature([Video, VideoProgress, VideoLike, StreamKey, Audio, User_Integration, Stream, AgoraStream, Thread, User, ErrorLog, Podcast]),
   ],
   controllers: [
     AppController,
@@ -104,6 +108,7 @@ import Redis from 'ioredis';
     StreamController,
     ListenController,
     UserIntegrationController,
+    StreamKeyController,
     ThreadController,
     CallController,
     UserController,
@@ -132,6 +137,8 @@ import Redis from 'ioredis';
     VideoRepository,
     VideoProgressRepository,
     VideoLikeRepository,
+    StreamKeyRepository,
+    StreamKeyService,
     StreamRepository,
     AgoraStreamRepository,
     IvsService,
