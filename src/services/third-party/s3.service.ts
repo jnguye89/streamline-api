@@ -23,9 +23,12 @@ export class S3Service {
   }
 
   async uploadAudioToS3(file: Express.Multer.File): Promise<string> {
-    const extension = mime.extension(file.mimetype as string);
+    const extension = mime.extension(file.mimetype);
     if (!extension) {
-      this.logService.insertLog('Invalid mimetype', 's3Service,uploadAudioToS3');
+      await this.logService.insertLog(
+        'Invalid mimetype',
+        's3Service,uploadAudioToS3',
+      );
       throw new Error('Invalid mimetype');
     }
 
@@ -67,9 +70,9 @@ export class S3Service {
         }),
       );
       return signedUrls;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error listing files from S3:', error);
-      this.logService.insertLog(error, 's3Service.listFiles');
+      await this.logService.insertLog(String(error), 's3Service.listFiles');
       throw error;
     }
   }
@@ -83,16 +86,24 @@ export class S3Service {
     return getSignedUrl(this.s3, command, { expiresIn: 3600 }); // 1 hour
   }
 
-  async streamUrlToS3(url: string, video_id: string, extension: string): Promise<string> {
-    const prefix = 'uploads'
+  async streamUrlToS3(
+    url: string,
+    video_id: string,
+    extension: string,
+  ): Promise<string> {
     const res = await fetch(url);
     if (!res.ok || !res.body) {
-      this.logService.insertLog(`Download failed: ${res.status}`, 's3Service.streamUrlToS3');
+      await this.logService.insertLog(
+        `Download failed: ${res.status}`,
+        's3Service.streamUrlToS3',
+      );
       throw new Error(`Download failed: ${res.status}`);
     }
 
     // Convert WHATWG ReadableStream -> Node Readable for AWS SDK
-    const bodyStream = Readable.fromWeb(res.body as any);
+    const bodyStream = Readable.fromWeb(
+      res.body as unknown as import('node:stream/web').ReadableStream,
+    );
 
     // const datePrefix = new Date().toISOString().slice(0, 10);
     const key = `uploads/wowza/${video_id}.${extension}`;
@@ -117,7 +128,7 @@ export class S3Service {
   public async generateUploadUrl(
     fileName: string,
     mimeType: string,
-    keyRoot: string
+    keyRoot: string,
   ): Promise<{ uploadUrl: string; key: string }> {
     const key = `${keyRoot}/${uuidv4()}-${fileName}`;
     const command = new PutObjectCommand({

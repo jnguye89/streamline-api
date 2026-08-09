@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import { firstValueFrom, Observable } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { AxiosResponse } from 'axios';
 import { RadioStation } from 'src/models/radio-stations.model';
 import { AudioRepository } from 'src/repositories/audio.repository';
@@ -11,14 +11,14 @@ export class ListenService {
   constructor(
     private readonly httpService: HttpService,
     private audioRepository: AudioRepository,
-  ) { }
+  ) {}
 
-  async getRandomStations(
-    quantity: number,
-  ): Promise<RadioStation[]> {
-    const r = await firstValueFrom(this.httpService.get<{ ip: string, name: string }[]>('https://all.api.radio-browser.info/json/servers'));
-    console.log(r);
-
+  async getRandomStations(quantity: number): Promise<RadioStation[]> {
+    const r = await firstValueFrom(
+      this.httpService.get<{ ip: string; name: string }[]>(
+        'https://all.api.radio-browser.info/json/servers',
+      ),
+    );
     for (const d of r.data) {
       const url = `https://${d.name}/json/stations/search?limit=${quantity}&hidebroken=true&language=english&countrycode=US&lastcheckok=1`;
       try {
@@ -27,12 +27,16 @@ export class ListenService {
             // optional: don’t throw on 4xx/5xx; then you must check status yourself
             // validateStatus: () => true,
             timeout: 5000,
-          })
+          }),
         );
 
         // If you DIDN'T set validateStatus, getting here implies 2xx already.
         // If you DID set it, check status range yourself:
-        if (result.status >= 200 && result.status < 300 && result.data?.length) {
+        if (
+          result.status >= 200 &&
+          result.status < 300 &&
+          result.data?.length
+        ) {
           return result.data;
         }
       } catch {

@@ -6,7 +6,6 @@ import {
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
-import { firstValueFrom } from 'rxjs';
 import { Public } from './../../auth/public.decorator';
 import { ListenService } from 'src/services/listen.service';
 import { User } from 'src/auth/user.decorator';
@@ -20,7 +19,7 @@ export class ListenController {
   constructor(
     private listenService: ListenService,
     private s3Service: S3Service,
-  ) { }
+  ) {}
 
   @Get('stations/:quantity')
   @Public()
