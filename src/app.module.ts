@@ -66,7 +66,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { VideoQueueService } from './services/video-queue.service';
 import { VideoFeedRepository } from './repositories/video-feed.repository';
 import { VideoEngagementSchedulerService } from './services/video-engagement-scheduler.service';
-import Redis from 'ioredis';
+import { RedisClientService } from './services/redis-client.service';
 
 @Module({
   imports: [
@@ -100,7 +100,20 @@ import Redis from 'ioredis';
       autoLoadEntities: true,
       synchronize: true, // turn off in prod
     }),
-    TypeOrmModule.forFeature([Video, VideoProgress, VideoLike, StreamKey, Audio, User_Integration, Stream, AgoraStream, Thread, User, ErrorLog, Podcast]),
+    TypeOrmModule.forFeature([
+      Video,
+      VideoProgress,
+      VideoLike,
+      StreamKey,
+      Audio,
+      User_Integration,
+      Stream,
+      AgoraStream,
+      Thread,
+      User,
+      ErrorLog,
+      Podcast,
+    ]),
   ],
   controllers: [
     AppController,
@@ -116,13 +129,10 @@ import Redis from 'ioredis';
     ElevenLabsController,
   ],
   providers: [
+    RedisClientService,
     {
       provide: 'REDIS_CLIENT',
-      useFactory: () =>
-        new Redis({
-          host: process.env.REDIS_HOST || 'localhost',
-          port: Number(process.env.REDIS_PORT || 6379),
-        }),
+      useExisting: RedisClientService,
     },
     VideoFeedRepository,
     VideoQueueService,
@@ -161,6 +171,6 @@ import Redis from 'ioredis';
     DeviceAuthService,
     ElevenLabsService,
   ],
-  exports: [VideoQueueService]
+  exports: [VideoQueueService],
 })
-export class AppModule { }
+export class AppModule {}

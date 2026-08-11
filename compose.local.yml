@@ -1,0 +1,39 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${STREAMLINE_DB_NAME}
+      MYSQL_USER: ${RDS_USERNAME}
+      MYSQL_PASSWORD: ${RDS_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${RDS_PASSWORD}
+    ports:
+      - '127.0.0.1:${RDS_PORT:-3306}:3306'
+    volumes:
+      - streamline_mysql_data:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'mysqladmin ping -h 127.0.0.1 -u$${MYSQL_USER} -p$${MYSQL_PASSWORD}',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:${REDIS_PORT:-6379}:6379'
+    volumes:
+      - streamline_redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  streamline_mysql_data:
+  streamline_redis_data:
