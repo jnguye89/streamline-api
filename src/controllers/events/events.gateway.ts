@@ -10,12 +10,15 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { ChatMessageDto, RecordingDto } from 'src/dto/events/chat-message.dto';
+import { OptionalWsJwtGuard } from 'src/auth/optional-ws-jwt.guard';
+import { AgoraTokenService } from 'src/services/third-party/agora/agora-token.service';
 
 import { WsJwtGuard } from 'src/auth/jwt-ws.guard';
 import { getCorsOrigins } from 'src/cors-origins';
-import { RecordingDto } from 'src/dto/events/chat-message.dto';
 import { JoinRoomDto } from 'src/dto/events/join-room.dto';
 import { EventsService } from 'src/services/events/events.service';
+import { UserService } from 'src/services/user.service';
 
 interface RoomEvent {
   userId?: string;
@@ -36,7 +39,7 @@ type AuthenticatedSocket = Socket<
   Record<string, never>,
   ServerToClientEvents,
   Record<string, never>,
-  { userId?: string }
+  { userId?: string, guestName?: string, username?: string }
 >;
 
 @WebSocketGateway({
@@ -52,7 +55,10 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
 
-  constructor(private readonly eventsService: EventsService) {}
+  constructor(
+    private readonly eventsService: EventsService,
+    private readonly userService: UserService,
+  ) { }
 
   // Socket.IO server available here
   afterInit(): void {
@@ -61,6 +67,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   handleConnection(client: AuthenticatedSocket): void {
+    client.data.guestName = `Guest-${client.id.slice(0, 4)}`;
     this.logger.log(`WS connected user=${client.data.userId}`);
   }
 
@@ -69,7 +76,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   // Join a room
-  @UseGuards(WsJwtGuard)
+  @UseGuards(OptionalWsJwtGuard)
   @SubscribeMessage('room:join')
   async onJoinRoom(
     @MessageBody() body: JoinRoomDto,
@@ -90,7 +97,7 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   // Leave a room
-  @UseGuards(WsJwtGuard)
+  @UseGuards(OptionalWsJwtGuard)
   @SubscribeMessage('room:leave')
   async onLeaveRoom(
     @MessageBody() body: JoinRoomDto,
@@ -144,4 +151,50 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
     return { ok: true, roomId: body.roomId };
   }
+
+  // Live stream chat - open to anonymous viewers, not just logged-in users.
+  @SubscribeMessage('chat:send')
+  @UseGuards(OptionalWsJwtGuard)
+  async onChatSend(
+    @MessageBody() body: ChatMessageDto,
+    @ConnectedSocket() client: AuthenticatedSocket,
+  ) {
+    const payload = {
+      userId: client.data.userId ?? client.id,
+      username: await this.resolveUsername(client),
+      text: body.text,
+      roomId: body.roomId,
+      ts: Date.now(),
+    };
+    this.logger.log(`user=${payload.userId} chat in room=${body.roomId}`);
+    this.server.to(body.roomId).emit('chat:message', payload);
+    return { ok: true };
+  }
+
+  // The JWT access token payload only carries auth claims (sub, scope, ...),
+  // never profile fields like a display name, so the real username has to
+  // come from our own User record. Cached per-socket since it can't change
+  // over the life of the connection.
+  private async resolveUsername(client: AuthenticatedSocket): Promise<string> {
+    if (client.data.username) return client.data.username;
+    if (!client.data.userId) return client.data.guestName ?? `Guest-${client.id.slice(0, 4)}`;
+
+    const user = await this.userService.getUser(client.data.userId);
+    client.data.username = user.username;
+    return user.username;
+  }
+
+  // Example: ping/pong / heartbeat
+  // @SubscribeMessage('system:ping')
+  // onPing(@ConnectedSocket() client: Socket, @MessageBody() data: any) {
+  //     console.log('data', data);
+  //     console.log('Received:', client);
+  //     client.emit('system:pong', { ts: Date.now() });
+  // }
+
+  // @SubscribeMessage('message')
+  // handleMessage(@MessageBody() data: any): string {
+  //     console.log('Received:', data);
+  //     return 'pong';
+  // }
 }

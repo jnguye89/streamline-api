@@ -1,4 +1,13 @@
-import { IsBoolean, IsString } from "class-validator";
+import { IsBoolean, IsString, MaxLength } from "class-validator";
+
+export class ChatMessageDto {
+    @IsString()
+    roomId!: string;
+
+    @IsString()
+    @MaxLength(500)
+    text!: string;
+}
 
 export class RecordingDto {
     @IsString()

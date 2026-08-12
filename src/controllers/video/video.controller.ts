@@ -8,6 +8,7 @@ import {
   Query,
   Body,
   UseGuards,
+  NotFoundException,
 } from '@nestjs/common';
 import { Public } from './../../auth/public.decorator';
 import { User } from './../../auth/user.decorator';
@@ -79,14 +80,22 @@ export class VideoController {
     @Param('id') id: string,
     @Body() body: { timestamp: number },
   ): Promise<void> {
-    await this.videoService.saveProgress(user.userId, Number(id), body.timestamp);
+    const videoId = this.parseVideoId(id);
+    if (videoId === null) {
+      return
+    }
+    await this.videoService.saveProgress(user.userId, videoId, body.timestamp);
   }
 
   @Post(':id/view')
   @Public()
   @HttpCode(204)
   async recordView(@Param('id') id: string): Promise<void> {
-    await this.videoService.recordView(Number(id));
+    const videoId = this.parseVideoId(id);
+    if (videoId === null) {
+      return
+    }
+    await this.videoService.recordView(videoId);
   }
 
   @Post(':id/like')
@@ -97,7 +106,20 @@ export class VideoController {
     @OptionalUser() user: UserModel | null,
     @Param('id') id: string,
   ): Promise<void> {
-    await this.videoService.recordLike(Number(id), user?.userId);
+    const videoId = this.parseVideoId(id);
+    if (videoId === null) {
+      return
+    }
+    await this.videoService.recordLike(videoId, user?.userId);
+  }
+
+  /** YouTube-sourced videos have no DB row (identified by a YouTube externalId, not a numeric id), so there's nothing to track. */
+  private parseVideoId(id: string): number | null {
+    const numericId = Number(id);
+    if (!Number.isFinite(numericId)) {
+      return null;
+    }
+    return numericId;
   }
 
   @Post('presign')

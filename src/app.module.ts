@@ -66,6 +66,12 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { VideoQueueService } from './services/video-queue.service';
 import { VideoFeedRepository } from './repositories/video-feed.repository';
 import { VideoEngagementSchedulerService } from './services/video-engagement-scheduler.service';
+import { YoutubeChannel } from './entity/youtube-channel.entity';
+import { YoutubeChannelRepository } from './repositories/youtube-channel.repository';
+import { YoutubeChannelController } from './controllers/youtube-channel.controller';
+import { YoutubeService } from './services/third-party/youtube.service';
+import { YoutubeVideoCacheRepository } from './repositories/youtube-video-cache.repository';
+import { YoutubeSyncSchedulerService } from './services/youtube-sync-scheduler.service';
 import { RedisClientService } from './services/redis-client.service';
 
 @Module({
@@ -113,6 +119,7 @@ import { RedisClientService } from './services/redis-client.service';
       User,
       ErrorLog,
       Podcast,
+      YoutubeChannel,
     ]),
   ],
   controllers: [
@@ -127,6 +134,7 @@ import { RedisClientService } from './services/redis-client.service';
     UserController,
     DeviceAuthController,
     ElevenLabsController,
+    YoutubeChannelController,
   ],
   providers: [
     RedisClientService,
@@ -170,6 +178,10 @@ import { RedisClientService } from './services/redis-client.service';
     EventsGateway,
     DeviceAuthService,
     ElevenLabsService,
+    YoutubeChannelRepository,
+    YoutubeService,
+    YoutubeVideoCacheRepository,
+    YoutubeSyncSchedulerService,
   ],
   exports: [VideoQueueService],
 })

@@ -15,7 +15,7 @@ export class AgoraTokenService {
   constructor(private userService: UserService) {}
 
   async createTokens(agoraUid: number, channel: string, ttlSeconds?: number) {
-    await this.userService.getAgoraUser(agoraUid);
+    // await this.userService.getAgoraUser(agoraUid);
 
     const ttl = ttlSeconds ?? this.defaultTtl;
     const expire = Math.floor(Date.now() / 1000) + ttl;
