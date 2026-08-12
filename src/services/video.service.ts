@@ -4,13 +4,46 @@ import { VideoRepository } from 'src/repositories/video.repository';
 import { VideoProgressRepository } from 'src/repositories/video-progress.repository';
 import { VideoLikeRepository } from 'src/repositories/video-like.repository';
 import { VideoFeedRepository } from 'src/repositories/video-feed.repository';
+import { YoutubeVideoCacheRepository } from 'src/repositories/youtube-video-cache.repository';
+import { Video } from 'src/entity/video.entity';
 import { VideoDto } from 'src/dto/video.dto';
+import { YoutubeVideoDto } from 'src/dto/youtube-video.dto';
 
 const DEFAULT_FEED_LIMIT = 20;
 const MAX_FEED_LIMIT = 100;
+const YOUTUBE_SHARE_RATIO = 0.25;
 
 function randomEngagementAmount(): number {
   return Math.floor(Math.random() * 100) + 1;
+}
+
+function shuffle<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+function sampleWithoutReplacement<T>(items: T[], count: number): T[] {
+  return shuffle(items).slice(0, count);
+}
+
+function toYoutubeVideoDto(video: YoutubeVideoDto): VideoDto {
+  return {
+    user: '',
+    videoPath: video.embedUrl,
+    watchUrl: video.watchUrl,
+    source: 'YOUTUBE',
+    externalId: video.externalId,
+    title: video.title,
+    thumbnailUrl: video.thumbnailUrl,
+    viewCount: 0,
+    likeCount: 0,
+    resumeTimestamp: 0,
+    liked: false,
+  };
 }
 
 @Injectable()
@@ -21,7 +54,8 @@ export class VideoService implements OnModuleInit {
     private videoProgressRepository: VideoProgressRepository,
     private videoLikeRepository: VideoLikeRepository,
     private videoFeedRepository: VideoFeedRepository,
-  ) {}
+    private youtubeVideoCacheRepository: YoutubeVideoCacheRepository,
+  ) { }
 
   async onModuleInit(): Promise<void> {
     const ids = await this.videoRepository.findAllIds();
@@ -37,9 +71,14 @@ export class VideoService implements OnModuleInit {
     limit: number = DEFAULT_FEED_LIMIT,
   ): Promise<VideoDto[]> {
     const cappedLimit = Math.min(Math.max(limit, 1), MAX_FEED_LIMIT);
+
+    const cachedYoutubeVideos = await this.youtubeVideoCacheRepository.getCached();
+    const youtubeSlots = Math.min(Math.round(cappedLimit * YOUTUBE_SHARE_RATIO), cachedYoutubeVideos.length);
+    const s3Slots = cappedLimit - youtubeSlots;
+
     const ids = userId
-      ? await this.videoFeedRepository.popRandomUnseen(userId, cappedLimit)
-      : await this.videoFeedRepository.popRandom(cappedLimit);
+      ? await this.videoFeedRepository.popRandomUnseen(userId, s3Slots)
+      : await this.videoFeedRepository.popRandom(s3Slots);
     const videos = await this.videoRepository.findByIds(ids);
 
     const progressByVideoId = new Map<number, number>();
@@ -56,17 +95,17 @@ export class VideoService implements OnModuleInit {
       likedVideoIds = new Set(likedIds);
     }
 
-    return Promise.all(
+    const s3Videos = await Promise.all(
       videos.map(async (video) => {
         const resumeTimestamp = progressByVideoId.get(video.id as number) ?? 0;
         const liked = likedVideoIds.has(video.id as number);
-        return {
-          ...(await this.attachSignedUrls(video)),
-          resumeTimestamp,
-          liked,
-        } as VideoDto;
+        return { ...(await this.attachSignedUrls(video)), source: 'S3', resumeTimestamp, liked } as VideoDto;
       }),
     );
+
+    const youtubeVideos = sampleWithoutReplacement(cachedYoutubeVideos, youtubeSlots).map(toYoutubeVideoDto);
+
+    return shuffle([...s3Videos, ...youtubeVideos]);
   }
 
   /** The video the user last recorded progress on, for cross-device resume. Null if they've never watched anything. */

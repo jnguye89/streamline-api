@@ -28,6 +28,12 @@ export class Video {
   @Column({ length: 2083, nullable: true })
   processedPath?: string;
 
+  @Column({ length: 255, nullable: true })
+  title?: string;
+
+  @Column({ length: 2083, nullable: true })
+  thumbnailUrl?: string;
+
   @Column({ type: 'enum', enum: VideoStatus, default: VideoStatus.PENDING })
   status!: VideoStatus;
 
