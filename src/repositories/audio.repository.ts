@@ -8,16 +8,13 @@ import { Repository } from 'typeorm';
 export class AudioRepository {
   constructor(
     @InjectRepository(Audio) private readonly audioRepo: Repository<Audio>,
-  ) { }
+  ) {}
 
   async create(audioDto: AudioDto): Promise<AudioDto> {
-    // const entity = this.mapper.map(audioDto, AudioCreateDto, Audio);
-    const entity = {
-      ...audioDto
-    } as Audio
+    const entity = { ...audioDto } as Audio;
     const audio = this.audioRepo.create(entity);
-    // const newEntity = await this.audioRepo.save(audio);
-    return { ...audio };
+    const savedAudio = await this.audioRepo.save(audio);
+    return { ...savedAudio };
   }
 
   async findAll(): Promise<Audio[]> {

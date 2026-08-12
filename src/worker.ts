@@ -7,4 +7,4 @@ async function bootstrap() {
   console.log('Video worker started');
 }
 
-bootstrap();
+void bootstrap();

@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "isolatedModules": true,
+    "rootDir": ".",
+    "types": ["node", "jest", "multer"]
+  },
+  "include": ["src/**/*.spec.ts", "src/**/*.d.ts", "test/**/*.ts"]
+}

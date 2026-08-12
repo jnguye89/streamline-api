@@ -1,7 +1,9 @@
 node_modules
 dist
-.env
-.env.*
+.git
+.env*
 *.local
 npm-debug.log*
 tmp
+coverage
+tasks

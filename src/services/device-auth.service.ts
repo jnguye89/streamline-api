@@ -1,6 +1,29 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { AxiosError } from 'axios';
 import { firstValueFrom } from 'rxjs';
+
+interface Auth0ErrorResponse {
+  error?: string;
+  error_description?: string;
+}
+
+interface DeviceCodeResponse {
+  device_code: string;
+  user_code: string;
+  verification_uri: string;
+  verification_uri_complete: string;
+  expires_in: number;
+  interval: number;
+}
+
+interface DeviceTokenResponse {
+  access_token: string;
+  id_token: string;
+  refresh_token?: string;
+  expires_in: number;
+  token_type: string;
+}
 
 @Injectable()
 export class DeviceAuthService {
@@ -11,16 +34,13 @@ export class DeviceAuthService {
   constructor(private readonly http: HttpService) {}
 
   async initiateDeviceFlow() {
-    console.log('domain: ', this.domain, '\nclientId: ', this.clientId, '\naudience: ', this.audience);
     const { data } = await firstValueFrom(
-      this.http.post(`${this.domain}/oauth/device/code`, {
+      this.http.post<DeviceCodeResponse>(`${this.domain}/oauth/device/code`, {
         client_id: this.clientId,
         scope: 'openid profile email offline_access use:tv',
         audience: this.audience,
       }),
     );
-    console.log(data);
-
     return {
       deviceCode: data.device_code,
       userCode: data.user_code,
@@ -34,7 +54,7 @@ export class DeviceAuthService {
   async pollForToken(deviceCode: string) {
     try {
       const { data } = await firstValueFrom(
-        this.http.post(`${this.domain}/oauth/token`, {
+        this.http.post<DeviceTokenResponse>(`${this.domain}/oauth/token`, {
           grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
           device_code: deviceCode,
           client_id: this.clientId,
@@ -49,8 +69,9 @@ export class DeviceAuthService {
         expiresIn: data.expires_in,
         tokenType: data.token_type,
       };
-    } catch (err) {
-      const errorCode = err?.response?.data?.error;
+    } catch (error: unknown) {
+      const auth0Error = error as AxiosError<Auth0ErrorResponse>;
+      const errorCode = auth0Error.response?.data?.error;
 
       if (errorCode === 'authorization_pending') {
         return { status: 'pending' };
@@ -66,7 +87,7 @@ export class DeviceAuthService {
       }
 
       throw new HttpException(
-        err?.response?.data?.error_description ?? 'Auth0 error',
+        auth0Error.response?.data?.error_description ?? 'Auth0 error',
         HttpStatus.BAD_GATEWAY,
       );
     }

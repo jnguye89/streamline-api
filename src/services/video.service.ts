@@ -4,7 +4,6 @@ import { VideoRepository } from 'src/repositories/video.repository';
 import { VideoProgressRepository } from 'src/repositories/video-progress.repository';
 import { VideoLikeRepository } from 'src/repositories/video-like.repository';
 import { VideoFeedRepository } from 'src/repositories/video-feed.repository';
-import { Video } from 'src/entity/video.entity';
 import { VideoDto } from 'src/dto/video.dto';
 
 const DEFAULT_FEED_LIMIT = 20;
@@ -22,7 +21,7 @@ export class VideoService implements OnModuleInit {
     private videoProgressRepository: VideoProgressRepository,
     private videoLikeRepository: VideoLikeRepository,
     private videoFeedRepository: VideoFeedRepository,
-  ) { }
+  ) {}
 
   async onModuleInit(): Promise<void> {
     const ids = await this.videoRepository.findAllIds();
@@ -33,7 +32,10 @@ export class VideoService implements OnModuleInit {
     return this.s3Service.getSignedUrl(key);
   }
 
-  async getAllVideos(userId?: string, limit: number = DEFAULT_FEED_LIMIT): Promise<VideoDto[]> {
+  async getAllVideos(
+    userId?: string,
+    limit: number = DEFAULT_FEED_LIMIT,
+  ): Promise<VideoDto[]> {
     const cappedLimit = Math.min(Math.max(limit, 1), MAX_FEED_LIMIT);
     const ids = userId
       ? await this.videoFeedRepository.popRandomUnseen(userId, cappedLimit)
@@ -48,7 +50,9 @@ export class VideoService implements OnModuleInit {
         this.videoProgressRepository.findByUserAndVideoIds(userId, videoIds),
         this.videoLikeRepository.findLikedVideoIds(userId, videoIds),
       ]);
-      progress.forEach((entry) => progressByVideoId.set(entry.videoId, entry.timestamp));
+      progress.forEach((entry) =>
+        progressByVideoId.set(entry.videoId, entry.timestamp),
+      );
       likedVideoIds = new Set(likedIds);
     }
 
@@ -56,20 +60,27 @@ export class VideoService implements OnModuleInit {
       videos.map(async (video) => {
         const resumeTimestamp = progressByVideoId.get(video.id as number) ?? 0;
         const liked = likedVideoIds.has(video.id as number);
-        return { ...(await this.attachSignedUrls(video)), resumeTimestamp, liked } as VideoDto;
+        return {
+          ...(await this.attachSignedUrls(video)),
+          resumeTimestamp,
+          liked,
+        } as VideoDto;
       }),
     );
   }
 
   /** The video the user last recorded progress on, for cross-device resume. Null if they've never watched anything. */
   async getContinueWatching(userId: string): Promise<VideoDto | null> {
-    const progress = await this.videoProgressRepository.findMostRecentByUser(userId);
+    const progress =
+      await this.videoProgressRepository.findMostRecentByUser(userId);
     if (!progress) return null;
 
     const [video] = await this.videoRepository.findByIds([progress.videoId]);
     if (!video) return null;
 
-    const likedIds = await this.videoLikeRepository.findLikedVideoIds(userId, [progress.videoId]);
+    const likedIds = await this.videoLikeRepository.findLikedVideoIds(userId, [
+      progress.videoId,
+    ]);
     return {
       ...(await this.attachSignedUrls(video)),
       resumeTimestamp: progress.timestamp,
@@ -77,8 +88,16 @@ export class VideoService implements OnModuleInit {
     } as VideoDto;
   }
 
-  async saveProgress(userId: string, videoId: number, timestamp: number): Promise<void> {
-    await this.videoProgressRepository.upsertProgress(userId, videoId, timestamp);
+  async saveProgress(
+    userId: string,
+    videoId: number,
+    timestamp: number,
+  ): Promise<void> {
+    await this.videoProgressRepository.upsertProgress(
+      userId,
+      videoId,
+      timestamp,
+    );
   }
 
   // Not tied to real viewer/like counts yet - each call bumps the counter by
@@ -112,7 +131,9 @@ export class VideoService implements OnModuleInit {
     if (!video.processedPath) {
       return { ...video, videoPath } as VideoDto;
     }
-    const processedPath = await this.s3Service.getSignedUrl(video.processedPath);
+    const processedPath = await this.s3Service.getSignedUrl(
+      video.processedPath,
+    );
     return { ...video, videoPath, processedPath } as VideoDto;
   }
 
@@ -133,7 +154,7 @@ export class VideoService implements OnModuleInit {
   public async generateUploadUrl(
     fileName: string,
     mimeType: string,
-    keyRoot: string
+    keyRoot: string,
   ): Promise<{ uploadUrl: string; key: string }> {
     return await this.s3Service.generateUploadUrl(fileName, mimeType, keyRoot);
   }
