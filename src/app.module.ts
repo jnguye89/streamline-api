@@ -73,6 +73,11 @@ import { YoutubeService } from './services/third-party/youtube.service';
 import { YoutubeVideoCacheRepository } from './repositories/youtube-video-cache.repository';
 import { YoutubeSyncSchedulerService } from './services/youtube-sync-scheduler.service';
 import { RedisClientService } from './services/redis-client.service';
+import { ChessGame } from './entity/chess-game.entity';
+import { ChessGameRepository } from './repositories/chess-game.repository';
+import { ChessService } from './services/chess/chess.service';
+import { ChessController } from './controllers/chess/chess.controller';
+import { ChessGateway } from './controllers/chess/chess.gateway';
 
 @Module({
   imports: [
@@ -120,6 +125,7 @@ import { RedisClientService } from './services/redis-client.service';
       ErrorLog,
       Podcast,
       YoutubeChannel,
+      ChessGame,
     ]),
   ],
   controllers: [
@@ -135,6 +141,7 @@ import { RedisClientService } from './services/redis-client.service';
     DeviceAuthController,
     ElevenLabsController,
     YoutubeChannelController,
+    ChessController,
   ],
   providers: [
     RedisClientService,
@@ -182,6 +189,9 @@ import { RedisClientService } from './services/redis-client.service';
     YoutubeService,
     YoutubeVideoCacheRepository,
     YoutubeSyncSchedulerService,
+    ChessGameRepository,
+    ChessService,
+    ChessGateway,
   ],
   exports: [VideoQueueService],
 })
