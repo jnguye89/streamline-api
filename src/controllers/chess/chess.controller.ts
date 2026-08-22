@@ -1,0 +1,49 @@
+import { Controller, Get, Param, ParseIntPipe, Post } from '@nestjs/common';
+
+import { Public } from 'src/auth/public.decorator';
+import { User } from 'src/auth/user.decorator';
+import { UserDto } from 'src/dto/user.dto';
+import { ChessGame } from 'src/entity/chess-game.entity';
+import { ChessService } from 'src/services/chess/chess.service';
+
+// Mirrors StreamController's split: listing/reading a game is public (an
+// anonymous viewer can spectate, same as a live stream), while every
+// mutating action requires the global JwtAuthGuard (no @Public()) - playing
+// chess requires login, spectating doesn't.
+@Controller('chess')
+export class ChessController {
+  constructor(private readonly chessService: ChessService) {}
+
+  @Get()
+  @Public()
+  async listGames(): Promise<ChessGame[]> {
+    return this.chessService.listOpenGames();
+  }
+
+  @Get(':id')
+  @Public()
+  async getGame(@Param('id', ParseIntPipe) id: number): Promise<ChessGame> {
+    return this.chessService.getGame(id);
+  }
+
+  @Post()
+  async createGame(@User() user: UserDto): Promise<ChessGame> {
+    return this.chessService.createGame(user.userId);
+  }
+
+  @Post(':id/join')
+  async joinGame(
+    @Param('id', ParseIntPipe) id: number,
+    @User() user: UserDto,
+  ): Promise<ChessGame> {
+    return this.chessService.joinGame(id, user.userId);
+  }
+
+  @Post(':id/resign')
+  async resign(
+    @Param('id', ParseIntPipe) id: number,
+    @User() user: UserDto,
+  ): Promise<ChessGame> {
+    return this.chessService.resign(id, user.userId);
+  }
+}
