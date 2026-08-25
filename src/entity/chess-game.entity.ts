@@ -88,6 +88,16 @@ export class ChessGame {
   @Column({ type: 'varchar', length: 5, nullable: true })
   winner!: ChessWinner | null;
 
+  // Which seat currently has a draw offer standing, or null if none. Same
+  // "must be explicit `type:`" reasoning as `winner` above applies here too
+  // - this is a nullable union (ChessColor | null), which emitDecoratorMetadata
+  // would otherwise reflect to bare Object and crash mysql's synchronize.
+  // Cleared whenever a move is made (see ChessService.applyMove) - making a
+  // move implicitly lapses any standing offer, same as over the board - and
+  // whenever the offer is accepted, declined, or the game otherwise ends.
+  @Column({ type: 'varchar', length: 5, name: 'draw_offered_by', nullable: true })
+  drawOfferedBy!: ChessColor | null;
+
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   createdAt!: Date;
 

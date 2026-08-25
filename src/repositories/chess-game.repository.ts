@@ -40,6 +40,7 @@ export class ChessGameRepository {
       pgn: '',
       turn: 'white',
       winner: null,
+      drawOfferedBy: null,
       endedAt: null,
     });
     return this.chessGameRepo.save(game);

@@ -46,4 +46,28 @@ export class ChessController {
   ): Promise<ChessGame> {
     return this.chessService.resign(id, user.userId);
   }
+
+  @Post(':id/draw/offer')
+  async offerDraw(
+    @Param('id', ParseIntPipe) id: number,
+    @User() user: UserDto,
+  ): Promise<ChessGame> {
+    return this.chessService.offerDraw(id, user.userId);
+  }
+
+  @Post(':id/draw/accept')
+  async acceptDraw(
+    @Param('id', ParseIntPipe) id: number,
+    @User() user: UserDto,
+  ): Promise<ChessGame> {
+    return this.chessService.acceptDraw(id, user.userId);
+  }
+
+  @Post(':id/draw/decline')
+  async declineDraw(
+    @Param('id', ParseIntPipe) id: number,
+    @User() user: UserDto,
+  ): Promise<ChessGame> {
+    return this.chessService.declineDraw(id, user.userId);
+  }
 }
