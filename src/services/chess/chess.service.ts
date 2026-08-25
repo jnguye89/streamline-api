@@ -109,6 +109,9 @@ export class ChessService {
     game.fen = chess.fen();
     game.pgn = chess.pgn();
     game.turn = chess.turn() === 'w' ? 'white' : 'black';
+    // Making a move implicitly lapses any standing draw offer, the same as
+    // over the board - whoever wants a draw has to ask again.
+    game.drawOfferedBy = null;
 
     if (chess.isCheckmate()) {
       game.status = 'checkmate';
@@ -135,6 +138,7 @@ export class ChessService {
       turn: saved.turn,
       status: saved.status,
       winner: saved.winner,
+      drawOfferedBy: saved.drawOfferedBy,
     });
     return { game: saved, from, to, san: move.san };
   }
@@ -158,6 +162,7 @@ export class ChessService {
       throw new BadRequestException('Game has already ended');
     }
 
+    game.drawOfferedBy = null;
     game.endedAt = new Date();
     const saved = await this.chessGameRepo.save(game);
 
@@ -165,6 +170,85 @@ export class ChessService {
       gameId: id,
       status: saved.status,
       winner: saved.winner,
+    });
+    return saved;
+  }
+
+  // Offering, accepting, and declining a draw are plain REST (not the
+  // socket, unlike applyMove) - same reasoning as resign(): none of these
+  // are latency-sensitive, and the room gets notified either way via
+  // EventsService regardless of which transport made the request.
+  async offerDraw(id: number, userId: string): Promise<ChessGame> {
+    const game = await this.getGame(id);
+    if (game.status !== 'active') {
+      throw new BadRequestException('Game is not active');
+    }
+    const seat = this.seatFor(game, userId);
+    if (!seat) {
+      throw new ForbiddenException('You are not a player in this game');
+    }
+    if (game.drawOfferedBy === seat) {
+      return game; // already offered by you - treat as a no-op, not an error
+    }
+
+    game.drawOfferedBy = seat;
+    const saved = await this.chessGameRepo.save(game);
+
+    this.eventsService.broadcastToRoom(this.roomFor(id), 'chess:draw-offered', {
+      gameId: id,
+      offeredBy: seat,
+    });
+    return saved;
+  }
+
+  // Requires the OTHER seat's agreement - the offering player calling this
+  // on their own offer is rejected below, same as they can't resign on their
+  // opponent's behalf.
+  async acceptDraw(id: number, userId: string): Promise<ChessGame> {
+    const game = await this.getGame(id);
+    const seat = this.seatFor(game, userId);
+    if (!seat) {
+      throw new ForbiddenException('You are not a player in this game');
+    }
+    if (!game.drawOfferedBy) {
+      throw new BadRequestException('No draw offer is pending');
+    }
+    if (game.drawOfferedBy === seat) {
+      throw new BadRequestException('You cannot accept your own draw offer');
+    }
+
+    game.status = 'draw';
+    game.winner = 'draw';
+    game.drawOfferedBy = null;
+    game.endedAt = new Date();
+    const saved = await this.chessGameRepo.save(game);
+
+    this.eventsService.broadcastToRoom(this.roomFor(id), 'chess:ended', {
+      gameId: id,
+      status: saved.status,
+      winner: saved.winner,
+    });
+    return saved;
+  }
+
+  async declineDraw(id: number, userId: string): Promise<ChessGame> {
+    const game = await this.getGame(id);
+    const seat = this.seatFor(game, userId);
+    if (!seat) {
+      throw new ForbiddenException('You are not a player in this game');
+    }
+    if (!game.drawOfferedBy) {
+      throw new BadRequestException('No draw offer is pending');
+    }
+    if (game.drawOfferedBy === seat) {
+      throw new BadRequestException('You cannot decline your own draw offer');
+    }
+
+    game.drawOfferedBy = null;
+    const saved = await this.chessGameRepo.save(game);
+
+    this.eventsService.broadcastToRoom(this.roomFor(id), 'chess:draw-declined', {
+      gameId: id,
     });
     return saved;
   }
