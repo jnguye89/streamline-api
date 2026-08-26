@@ -76,6 +76,7 @@ import { RedisClientService } from './services/redis-client.service';
 import { ChessGame } from './entity/chess-game.entity';
 import { ChessGameRepository } from './repositories/chess-game.repository';
 import { ChessService } from './services/chess/chess.service';
+import { ChessTimeoutSchedulerService } from './services/chess/chess-timeout-scheduler.service';
 import { ChessController } from './controllers/chess/chess.controller';
 import { ChessGateway } from './controllers/chess/chess.gateway';
 
@@ -191,6 +192,7 @@ import { ChessGateway } from './controllers/chess/chess.gateway';
     YoutubeSyncSchedulerService,
     ChessGameRepository,
     ChessService,
+    ChessTimeoutSchedulerService,
     ChessGateway,
   ],
   exports: [VideoQueueService],
