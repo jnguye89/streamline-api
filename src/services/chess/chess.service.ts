@@ -112,6 +112,9 @@ export class ChessService {
     // Making a move implicitly lapses any standing draw offer, the same as
     // over the board - whoever wants a draw has to ask again.
     game.drawOfferedBy = null;
+    // A new turn just started for whoever `game.turn` now says is to move -
+    // resets the clock ChessTimeoutSchedulerService checks against.
+    game.turnStartedAt = new Date();
 
     if (chess.isCheckmate()) {
       game.status = 'checkmate';
@@ -172,6 +175,37 @@ export class ChessService {
       winner: saved.winner,
     });
     return saved;
+  }
+
+  // Called periodically by ChessTimeoutSchedulerService, never from a
+  // request - nobody may be calling this API at all while a player is away,
+  // which is exactly the case this exists to catch. Whichever seat's turn
+  // it currently is loses (their opponent wasn't the one who went quiet),
+  // same winner-assignment shape as resign() but a distinct 'timeout'
+  // status so the UI can say "X wins by timeout" rather than implying they
+  // chose to resign.
+  async autoResignStaleTurns(timeoutMs: number): Promise<ChessGame[]> {
+    const cutoff = new Date(Date.now() - timeoutMs);
+    const staleGames = await this.chessGameRepo.findStaleActiveGames(cutoff);
+
+    const resigned: ChessGame[] = [];
+    for (const game of staleGames) {
+      const absentSeat = game.turn;
+      game.status = 'timeout';
+      game.winner = absentSeat === 'white' ? 'black' : 'white';
+      game.drawOfferedBy = null;
+      game.endedAt = new Date();
+
+      const saved = await this.chessGameRepo.save(game);
+      resigned.push(saved);
+
+      this.eventsService.broadcastToRoom(this.roomFor(game.id), 'chess:ended', {
+        gameId: game.id,
+        status: saved.status,
+        winner: saved.winner,
+      });
+    }
+    return resigned;
   }
 
   // Offering, accepting, and declining a draw are plain REST (not the

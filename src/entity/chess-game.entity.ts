@@ -17,7 +17,8 @@ export type ChessGameStatus =
   | 'stalemate'
   | 'draw'
   | 'resigned'
-  | 'abandoned';
+  | 'abandoned'
+  | 'timeout';
 
 export type ChessColor = 'white' | 'black';
 export type ChessWinner = 'white' | 'black' | 'draw';
@@ -97,6 +98,19 @@ export class ChessGame {
   // whenever the offer is accepted, declined, or the game otherwise ends.
   @Column({ type: 'varchar', length: 5, name: 'draw_offered_by', nullable: true })
   drawOfferedBy!: ChessColor | null;
+
+  // When the CURRENT turn (whoever `turn` says is to move) began - reset on
+  // every move (ChessService.applyMove) and the moment the game actually
+  // goes active (ChessGameRepository.setBlackUserAndActivate; a 'waiting'
+  // game with nobody to play against yet doesn't have a "turn" running).
+  // ChessTimeoutSchedulerService compares this against a configurable
+  // cutoff to auto-resign whoever's gone quiet - see CHESS_TURN_TIMEOUT_HOURS.
+  // Nullable (rather than backfilled) so this rolls out safely onto
+  // existing rows: a game already in progress before this column existed
+  // simply isn't eligible for auto-timeout until its next move sets it,
+  // instead of every in-flight game suddenly reading as maximally stale.
+  @Column({ type: 'timestamp', name: 'turn_started_at', nullable: true })
+  turnStartedAt!: Date | null;
 
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   createdAt!: Date;

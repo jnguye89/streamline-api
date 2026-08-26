@@ -13,6 +13,18 @@ export class ChessGameRepository {
   async findOpen(): Promise<ChessGame[]> {
     return this.chessGameRepo
       .createQueryBuilder('g')
+      // whiteUser/blackUser are `eager: true` on the entity, but eager
+      // relations only auto-join through the find()/findOne() Find Options
+      // API (see findById below) - TypeORM's QueryBuilder never applies
+      // them implicitly, so without these explicit joins every game here
+      // comes back with whiteUser/blackUser undefined. That silently broke
+      // the watch feed's seated-player check (WatchComponent.canPlayChess /
+      // ChessGameComponent.mySeat both compare against
+      // game.whiteUser?.auth0UserId), since this is what powers
+      // ChessService.listOpenGames() -> GET /chess -> the frontend's
+      // currentItem for a game in the feed.
+      .leftJoinAndSelect('g.whiteUser', 'whiteUser')
+      .leftJoinAndSelect('g.blackUser', 'blackUser')
       .where('g.status IN (:...statuses)', {
         statuses: ['waiting', 'active'],
       })
@@ -41,6 +53,10 @@ export class ChessGameRepository {
       turn: 'white',
       winner: null,
       drawOfferedBy: null,
+      // Null, not "now" - nobody's turn is actually running while the game
+      // is still 'waiting' for a second player. Set for real the moment it
+      // goes active, in setBlackUserAndActivate below.
+      turnStartedAt: null,
       endedAt: null,
     });
     return this.chessGameRepo.save(game);
@@ -55,10 +71,29 @@ export class ChessGameRepository {
       id,
       blackUser: { auth0UserId: blackUserId },
       status: 'active',
+      turnStartedAt: new Date(),
     });
   }
 
   async save(game: ChessGame): Promise<ChessGame> {
     return this.chessGameRepo.save(game);
+  }
+
+  // Active games where the side to move has gone quiet longer than `cutoff`
+  // allows - fed a computed `now - timeoutMs` cutoff by
+  // ChessTimeoutSchedulerService rather than taking a raw duration here, so
+  // this stays a plain, easily-testable point-in-time query.
+  async findStaleActiveGames(cutoff: Date): Promise<ChessGame[]> {
+    return this.chessGameRepo
+      .createQueryBuilder('g')
+      // Same QueryBuilder-doesn't-honor-`eager: true` gap as findOpen()
+      // above - joined explicitly so whiteUser/blackUser are actually
+      // populated on whatever autoResignStaleTurns() does with these.
+      .leftJoinAndSelect('g.whiteUser', 'whiteUser')
+      .leftJoinAndSelect('g.blackUser', 'blackUser')
+      .where('g.status = :status', { status: 'active' })
+      .andWhere('g.turnStartedAt IS NOT NULL')
+      .andWhere('g.turnStartedAt < :cutoff', { cutoff })
+      .getMany();
   }
 }
