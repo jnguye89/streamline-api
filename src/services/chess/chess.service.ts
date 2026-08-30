@@ -38,9 +38,42 @@ export class ChessService {
     return game;
   }
 
+  // "Play Chess" always used to spin up a brand-new game unconditionally,
+  // which is exactly why two people clicking it back to back never ended up
+  // in the same room: the watch-feed's single-slot chess$ pipeline already
+  // knows to show an open seat instead of the demo placeholder when one
+  // exists, but the actual button that STARTS a game never checked for one
+  // before acting, so the second player got their own fresh waiting room
+  // instead of landing in the first player's. This now applies the same
+  // "join an open seat if one exists, otherwise start one" rule to the
+  // action itself, not just to what the feed displays.
   async createGame(userId: string): Promise<ChessGame> {
-    const whiteUserId = await this.ensureLocalUser(userId);
-    return this.chessGameRepo.createNew(whiteUserId);
+    const userLocalId = await this.ensureLocalUser(userId);
+
+    // findOpen() is ordered newest-first; reversed here so matching prefers
+    // whichever open seat has been waiting longest, rather than always
+    // grabbing whatever was just created a moment ago.
+    const openGames = await this.chessGameRepo.findOpen();
+    const openSeat = [...openGames]
+      .reverse()
+      .find(
+        (g) =>
+          g.status === 'waiting' &&
+          !g.blackUser &&
+          g.whiteUser?.auth0UserId !== userLocalId,
+      );
+
+    if (openSeat) {
+      try {
+        return await this.joinGame(openSeat.id, userId);
+      } catch {
+        // Someone else grabbed this exact seat in the tiny gap between the
+        // query above and the join below - fall through to starting a
+        // fresh game instead of failing the click outright.
+      }
+    }
+
+    return this.chessGameRepo.createNew(userLocalId);
   }
 
   // Broadcasting lives here (not in the controller/gateway) so it fires no
