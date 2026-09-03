@@ -25,6 +25,12 @@ const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 // hours" example given when this was speced.
 const DEFAULT_TIMEOUT_HOURS = 6;
 
+// Used only if CHESS_WAITING_TIMEOUT_MINUTES is unset entirely. Independent
+// of DEFAULT_TIMEOUT_HOURS above, which only governs an ACTIVE game where a
+// seated player goes quiet mid-game - this is the much shorter "nobody ever
+// showed up to the open seat" case, so it's minutes, not hours.
+const DEFAULT_WAITING_TIMEOUT_MINUTES = 15;
+
 @Injectable()
 export class ChessTimeoutSchedulerService {
   private readonly logger = new Logger(ChessTimeoutSchedulerService.name);
@@ -46,6 +52,25 @@ export class ChessTimeoutSchedulerService {
     }
   }
 
+  // Companion sweep for games nobody ever joined. Reuses the same
+  // CHECK_INTERVAL_MS cadence as checkForAbandonedTurns above - against a
+  // 15-minute default timeout that still catches a stale waiting game
+  // within 5 minutes of crossing the line, plenty precise here too.
+  @Interval(CHECK_INTERVAL_MS)
+  async checkForAbandonedWaitingGames(): Promise<void> {
+    const timeoutMs = this.resolveWaitingTimeoutMs();
+    if (timeoutMs === null) return; // feature disabled - see resolveWaitingTimeoutMs
+
+    const abandoned = await this.chessService.autoAbandonStaleWaitingGames(timeoutMs);
+    if (abandoned.length) {
+      const minutes = timeoutMs / (60 * 1000);
+      this.logger.log(
+        `Auto-abandoned ${abandoned.length} game(s) that sat 'waiting' past the ${minutes}m no-opponent timeout: ` +
+          abandoned.map((g) => `#${g.id}`).join(', '),
+      );
+    }
+  }
+
   // CHESS_TURN_TIMEOUT_HOURS unset -> the documented 6-hour default.
   // Set to a positive number -> that many hours.
   // Set to '0' (or any non-positive/non-numeric value) -> feature disabled,
@@ -56,5 +81,17 @@ export class ChessTimeoutSchedulerService {
 
     if (!Number.isFinite(hours) || hours <= 0) return null;
     return hours * 60 * 60 * 1000;
+  }
+
+  // Same on/off/configurable convention as resolveTimeoutMs above, in
+  // minutes instead of hours: CHESS_WAITING_TIMEOUT_MINUTES unset -> the
+  // documented 15-minute default; a positive number -> that many minutes;
+  // '0' or anything non-positive/non-numeric -> feature disabled.
+  private resolveWaitingTimeoutMs(): number | null {
+    const raw = process.env.CHESS_WAITING_TIMEOUT_MINUTES;
+    const minutes = raw === undefined ? DEFAULT_WAITING_TIMEOUT_MINUTES : Number(raw);
+
+    if (!Number.isFinite(minutes) || minutes <= 0) return null;
+    return minutes * 60 * 1000;
   }
 }
