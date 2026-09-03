@@ -96,4 +96,20 @@ export class ChessGameRepository {
       .andWhere('g.turnStartedAt < :cutoff', { cutoff })
       .getMany();
   }
+
+  // Games still sitting 'waiting' for a second player longer than `cutoff`
+  // allows - the no-opponent counterpart to findStaleActiveGames above
+  // (that one catches a seated player going quiet mid-game; this one
+  // catches nobody ever showing up to fill the open seat at all).
+  async findStaleWaitingGames(cutoff: Date): Promise<ChessGame[]> {
+    return this.chessGameRepo
+      .createQueryBuilder('g')
+      // Same QueryBuilder-doesn't-honor-`eager: true` gap as findOpen()
+      // above.
+      .leftJoinAndSelect('g.whiteUser', 'whiteUser')
+      .leftJoinAndSelect('g.blackUser', 'blackUser')
+      .where('g.status = :status', { status: 'waiting' })
+      .andWhere('g.createdAt < :cutoff', { cutoff })
+      .getMany();
+  }
 }

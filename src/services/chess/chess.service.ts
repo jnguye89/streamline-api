@@ -241,6 +241,34 @@ export class ChessService {
     return resigned;
   }
 
+  // Called periodically by ChessTimeoutSchedulerService, same as
+  // autoResignStaleTurns above - but for games that never got a second
+  // player at all. There's no opponent to award a win to here (nobody ever
+  // showed up), so this ends the game as 'abandoned' with no winner, the
+  // same terminal state resign() already uses when the creator themselves
+  // backs out of their own still-waiting game.
+  async autoAbandonStaleWaitingGames(timeoutMs: number): Promise<ChessGame[]> {
+    const cutoff = new Date(Date.now() - timeoutMs);
+    const staleGames = await this.chessGameRepo.findStaleWaitingGames(cutoff);
+
+    const abandoned: ChessGame[] = [];
+    for (const game of staleGames) {
+      game.status = 'abandoned';
+      game.winner = null;
+      game.endedAt = new Date();
+
+      const saved = await this.chessGameRepo.save(game);
+      abandoned.push(saved);
+
+      this.eventsService.broadcastToRoom(this.roomFor(game.id), 'chess:ended', {
+        gameId: game.id,
+        status: saved.status,
+        winner: saved.winner,
+      });
+    }
+    return abandoned;
+  }
+
   // Offering, accepting, and declining a draw are plain REST (not the
   // socket, unlike applyMove) - same reasoning as resign(): none of these
   // are latency-sensitive, and the room gets notified either way via
