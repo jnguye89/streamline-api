@@ -75,6 +75,25 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.logger.log(`Client disconnected: ${client.id}`);
   }
 
+  // Registers this socket into its own personal room (`user:{userId}`) so
+  // EventsService.notifyUser() can reach this specific user later no matter
+  // what room(s) they've joined or left - e.g. a chess "your turn" nudge
+  // while they're sitting on the profile page, not the watch page.
+  // OptionalWsJwtGuard (not the hard WsJwtGuard) because RecordingSocketService
+  // emits this unconditionally right after every connect, authenticated or
+  // not - an anonymous caller just no-ops here rather than getting rejected.
+  @UseGuards(OptionalWsJwtGuard)
+  @SubscribeMessage('user:register')
+  onRegisterUser(@ConnectedSocket() client: AuthenticatedSocket): { ok: true } {
+    if (client.data.userId) {
+      void client.join(`user:${client.data.userId}`);
+      this.logger.log(
+        `user=${client.data.userId} registered for personal notifications (socket=${client.id})`,
+      );
+    }
+    return { ok: true };
+  }
+
   // Join a room
   @UseGuards(OptionalWsJwtGuard)
   @SubscribeMessage('room:join')

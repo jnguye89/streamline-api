@@ -111,6 +111,25 @@ import { ChessGateway } from './controllers/chess/chess.gateway';
       database: process.env.STREAMLINE_DB_NAME,
       autoLoadEntities: true,
       synchronize: true, // turn off in prod
+      // Without this, mysql2 falls back to the host OS's local timezone when
+      // converting Date <-> TIMESTAMP/DATETIME, while MySQL's own TIMESTAMP
+      // columns convert through the server's session time_zone (usually
+      // 'SYSTEM'). On a machine whose local zone isn't UTC, those two
+      // assumptions disagree and every auto-generated timestamp (createdAt,
+      // updatedAt, turnStartedAt, ...) gets written off by the local UTC
+      // offset - concretely, a game created "now" on a Pacific-time laptop
+      // was coming back with a createdAt nearly 6 hours in the future
+      // relative to the machine's own clock, which meant
+      // ChessGameRepository.findStaleWaitingGames()'s `createdAt < cutoff`
+      // check could never match it (a timestamp stamped into the future is
+      // never "older than 15 minutes ago"), so the auto-abandon sweep would
+      // never fire for it - forever, not just "not yet." Production wasn't
+      // affected because both the app and DB there already run in UTC, so
+      // the two assumptions happened to already agree. Pinning the
+      // connection to UTC makes that agreement explicit instead of
+      // accidental, so this can't depend on whatever timezone a given
+      // machine (or its local MySQL install) happens to be set to.
+      timezone: 'Z',
     }),
     TypeOrmModule.forFeature([
       Video,
