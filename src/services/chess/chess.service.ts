@@ -101,6 +101,7 @@ export class ChessService {
       status: saved.status,
       turn: saved.turn,
     });
+    this.notifyTurn(saved);
     return saved;
   }
 
@@ -176,6 +177,7 @@ export class ChessService {
       winner: saved.winner,
       drawOfferedBy: saved.drawOfferedBy,
     });
+    this.notifyTurn(saved);
     return { game: saved, from, to, san: move.san };
   }
 
@@ -346,6 +348,25 @@ export class ChessService {
       gameId: id,
     });
     return saved;
+  }
+
+  // Personal "it's your turn" nudge - separate from the chess:move/
+  // chess:joined room broadcasts above, and sent via EventsService.notifyUser
+  // (the whoever's-turn-it-is player's own `user:{id}` room) rather than
+  // the room broadcast, so it reaches that player wherever they are in the
+  // app, not just while they happen to have this exact game's chess:{id}
+  // room joined. No-ops for a game that just ended (nobody's "turn" is
+  // meaningful once it's checkmate/stalemate/draw/resigned/etc.).
+  private notifyTurn(game: ChessGame): void {
+    if (game.status !== 'active') return;
+    const toMove = game.turn === 'white' ? game.whiteUser : game.blackUser;
+    if (!toMove) return;
+    const opponent = game.turn === 'white' ? game.blackUser : game.whiteUser;
+
+    this.eventsService.notifyUser(toMove.auth0UserId, 'chess:your-turn', {
+      gameId: game.id,
+      opponentUsername: opponent?.username ?? null,
+    });
   }
 
   private roomFor(id: number): string {
