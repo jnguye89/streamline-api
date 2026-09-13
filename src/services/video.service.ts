@@ -108,6 +108,39 @@ export class VideoService implements OnModuleInit {
     return shuffle([...s3Videos, ...youtubeVideos]);
   }
 
+  /**
+   * Fetch a single video by its numeric id, regardless of whether it turns
+   * up in the random feed getAllVideos() would otherwise serve. That feed
+   * samples randomly per request (popRandomUnseen/popRandom), so there's no
+   * guarantee any specific video appears in a given page or request - which
+   * matters for a client-side deep link to one exact video (e.g. the
+   * "back to the video I was watching" flow after visiting a profile page)
+   * that can't just wait for it to randomly turn up. Null if the video
+   * doesn't exist (deleted, or a bad id).
+   */
+  async getVideoById(id: number, userId?: string): Promise<VideoDto | null> {
+    const [video] = await this.videoRepository.findByIds([id]);
+    if (!video) return null;
+
+    let resumeTimestamp = 0;
+    let liked = false;
+    if (userId) {
+      const [progress, likedIds] = await Promise.all([
+        this.videoProgressRepository.findByUserAndVideoIds(userId, [id]),
+        this.videoLikeRepository.findLikedVideoIds(userId, [id]),
+      ]);
+      resumeTimestamp = progress.find((entry) => entry.videoId === id)?.timestamp ?? 0;
+      liked = likedIds.includes(id);
+    }
+
+    return {
+      ...(await this.attachSignedUrls(video)),
+      source: 'S3',
+      resumeTimestamp,
+      liked,
+    } as VideoDto;
+  }
+
   /** The video the user last recorded progress on, for cross-device resume. Null if they've never watched anything. */
   async getContinueWatching(userId: string): Promise<VideoDto | null> {
     const progress =
