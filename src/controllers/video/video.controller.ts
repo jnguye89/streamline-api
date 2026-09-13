@@ -56,6 +56,28 @@ export class VideoController {
     return { isLive };
   }
 
+  // Must stay after the literal-path GET routes above ('continue-watching',
+  // 'user/:id', 'status') - Nest matches routes in declaration order, so a
+  // ':id' route declared earlier would swallow those requests instead
+  // (e.g. GET /video/status would bind status to :id here).
+  @Get(':id')
+  @Public()
+  @UseGuards(OptionalJwtAuthGuard)
+  async getVideoById(
+    @OptionalUser() user: UserModel | null,
+    @Param('id') id: string,
+  ): Promise<VideoDto> {
+    const videoId = this.parseVideoId(id);
+    if (videoId === null) {
+      throw new NotFoundException('Video not found');
+    }
+    const video = await this.videoService.getVideoById(videoId, user?.userId);
+    if (!video) {
+      throw new NotFoundException('Video not found');
+    }
+    return video;
+  }
+
   @Post()
   async createVideo(
     @User() user: UserModel,
