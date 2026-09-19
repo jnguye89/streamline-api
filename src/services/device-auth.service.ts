@@ -92,4 +92,49 @@ export class DeviceAuthService {
       );
     }
   }
+
+  // Exchanges a stored refresh token for a new access/id token pair, so a
+  // kiosk device can stay signed in past the (short) access token lifetime
+  // without ever re-showing the device-code screen. Requires the Refresh
+  // Token grant to be enabled on the TV Auth0 application and
+  // `offline_access` to have been requested at login time (see
+  // initiateDeviceFlow).
+  async refreshToken(refreshToken: string) {
+    try {
+      const { data } = await firstValueFrom(
+        this.http.post<DeviceTokenResponse>(`${this.domain}/oauth/token`, {
+          grant_type: 'refresh_token',
+          client_id: this.clientId,
+          refresh_token: refreshToken,
+        }),
+      );
+
+      return {
+        status: 'complete',
+        accessToken: data.access_token,
+        idToken: data.id_token,
+        // Only present when Refresh Token Rotation is enabled on the Auth0
+        // application - callers should fall back to the refresh token they
+        // already have when this comes back empty.
+        refreshToken: data.refresh_token ?? null,
+        expiresIn: data.expires_in,
+        tokenType: data.token_type,
+      };
+    } catch (error: unknown) {
+      const auth0Error = error as AxiosError<Auth0ErrorResponse>;
+      const errorCode = auth0Error.response?.data?.error;
+
+      if (errorCode === 'invalid_grant') {
+        throw new HttpException(
+          'Refresh token is invalid, expired, or has been revoked',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
+      throw new HttpException(
+        auth0Error.response?.data?.error_description ?? 'Auth0 error',
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
+  }
 }
