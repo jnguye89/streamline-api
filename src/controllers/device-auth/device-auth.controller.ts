@@ -17,4 +17,10 @@ export class DeviceAuthController {
   pollForToken(@Body('deviceCode') deviceCode: string) {
     return this.deviceAuthService.pollForToken(deviceCode);
   }
+
+  @Post('refresh')
+  @Public()
+  refreshToken(@Body('refreshToken') refreshToken: string) {
+    return this.deviceAuthService.refreshToken(refreshToken);
+  }
 }
