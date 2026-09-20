@@ -2,14 +2,22 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
+  OnApplicationBootstrap,
 } from '@nestjs/common';
 import { Chess } from 'chess.js';
 
-import { ChessColor, ChessGame } from 'src/entity/chess-game.entity';
+import {
+  CHESS_BOT_USERNAME,
+  CHESS_BOT_USER_ID,
+  ChessColor,
+  ChessGame,
+} from 'src/entity/chess-game.entity';
 import { ChessGameRepository } from 'src/repositories/chess-game.repository';
 import { EventsService } from 'src/services/events/events.service';
 import { UserService } from 'src/services/user.service';
+import { ChessEngineService, EngineMove } from './chess-engine.service';
 
 export interface ChessMoveResult {
   game: ChessGame;
@@ -18,13 +26,54 @@ export interface ChessMoveResult {
   san: string;
 }
 
+// The computer "thinks" for a beat beyond the engine's own search time so
+// replies don't land instantly, which reads as robotic and makes a quick
+// capture sequence hard to follow on screen.
+const BOT_REPLY_MIN_DELAY_MS = 600;
+const BOT_REPLY_JITTER_MS = 800;
+// How long the computer sits on a draw offer before declining it, so the
+// human sees "Draw offer sent…" first and then the "Draw declined." message
+// rather than the two collapsing into one frame.
+const BOT_DRAW_RESPONSE_DELAY_MS = 1000;
+
 @Injectable()
-export class ChessService {
+export class ChessService implements OnApplicationBootstrap {
+  private readonly logger = new Logger(ChessService.name);
+
+  // Games with a computer reply already scheduled or in flight, so a second
+  // trigger (e.g. the stale-turn sweep firing while the engine is still
+  // thinking) can't queue a duplicate move. In-memory on purpose: it only
+  // needs to be right for this process, and the reply itself re-checks the
+  // game's real state before moving.
+  private readonly pendingComputerMoves = new Set<number>();
+
   constructor(
     private readonly chessGameRepo: ChessGameRepository,
     private readonly userService: UserService,
     private readonly eventsService: EventsService,
+    private readonly engine: ChessEngineService,
   ) {}
+
+  // A computer reply that was pending in memory dies with the process, and
+  // nothing else would ever prompt it again (the human is waiting on the
+  // board, not calling the API). Pick those games back up on boot.
+  async onApplicationBootstrap(): Promise<void> {
+    try {
+      const awaiting =
+        await this.chessGameRepo.findActiveComputerGamesAwaitingBot();
+      awaiting.forEach((g) => this.scheduleComputerMove(g.id));
+      if (awaiting.length) {
+        this.logger.log(
+          `Resuming ${awaiting.length} vs-computer game(s) awaiting a reply`,
+        );
+      }
+    } catch (err) {
+      this.logger.error(
+        'Could not resume vs-computer games on boot',
+        err as Error,
+      );
+    }
+  }
 
   async listOpenGames(): Promise<ChessGame[]> {
     return this.chessGameRepo.findOpen();
@@ -100,8 +149,41 @@ export class ChessService {
       blackUser: saved.blackUser,
       status: saved.status,
       turn: saved.turn,
+      vsComputer: saved.vsComputer,
     });
     this.notifyTurn(saved);
+    return saved;
+  }
+
+  // Creator-only alternative to waiting for a human: seats the built-in
+  // computer as black and starts the game. The human is always white for
+  // v1, so the computer never has to open - the first reply is triggered by
+  // the human's first move (see applyMove).
+  async playComputer(id: number, userId: string): Promise<ChessGame> {
+    const game = await this.getGame(id);
+    if (game.whiteUser.auth0UserId !== userId) {
+      throw new ForbiddenException(
+        'Only the player who started this game can play the computer',
+      );
+    }
+    if (game.status !== 'waiting') {
+      throw new BadRequestException('This game is not waiting for an opponent');
+    }
+
+    const botId = await this.ensureBotUser();
+    await this.chessGameRepo.setBlackUserAndActivate(id, botId, true);
+    const saved = await this.getGame(id);
+
+    // Same event a human join sends, so the creator's board (and anyone
+    // spectating the room) flips from "waiting" to active with no new
+    // client listener. No notifyTurn: the creator is looking right at it.
+    this.eventsService.broadcastToRoom(this.roomFor(id), 'chess:joined', {
+      gameId: id,
+      blackUser: saved.blackUser,
+      status: saved.status,
+      turn: saved.turn,
+      vsComputer: saved.vsComputer,
+    });
     return saved;
   }
 
@@ -129,6 +211,29 @@ export class ChessService {
       throw new ForbiddenException('It is not your turn');
     }
 
+    const result = await this.executeMove(game, seat, from, to, promotion);
+    if (
+      result.game.vsComputer &&
+      result.game.status === 'active' &&
+      result.game.turn === 'black'
+    ) {
+      this.scheduleComputerMove(id);
+    }
+    return result;
+  }
+
+  // Everything that happens once a move is known to be from the right seat
+  // on their own turn: chess.js validation against the stored fen, persist,
+  // broadcast. Shared by human moves (applyMove) and the computer's reply
+  // (playComputerMove) so both go through the exact same authority.
+  private async executeMove(
+    game: ChessGame,
+    seat: ChessColor,
+    from: string,
+    to: string,
+    promotion?: string,
+  ): Promise<ChessMoveResult> {
+    const id = game.id;
     const chess = new Chess(game.fen);
     let move;
     try {
@@ -225,6 +330,14 @@ export class ChessService {
 
     const resigned: ChessGame[] = [];
     for (const game of staleGames) {
+      // A computer that's "gone quiet" isn't a player who walked away - its
+      // reply was lost (restart, engine failure). Retry the move instead of
+      // handing the human a win they didn't earn.
+      if (game.vsComputer && game.turn === 'black') {
+        this.scheduleComputerMove(game.id);
+        continue;
+      }
+
       const absentSeat = game.turn;
       game.status = 'timeout';
       game.winner = absentSeat === 'white' ? 'black' : 'white';
@@ -295,6 +408,9 @@ export class ChessService {
       gameId: id,
       offeredBy: seat,
     });
+    if (saved.vsComputer) {
+      this.scheduleComputerDrawDecline(id);
+    }
     return saved;
   }
 
@@ -361,12 +477,132 @@ export class ChessService {
     if (game.status !== 'active') return;
     const toMove = game.turn === 'white' ? game.whiteUser : game.blackUser;
     if (!toMove) return;
+    // Nobody to nudge - the computer replies on its own.
+    if (toMove.auth0UserId === CHESS_BOT_USER_ID) return;
     const opponent = game.turn === 'white' ? game.blackUser : game.whiteUser;
 
     this.eventsService.notifyUser(toMove.auth0UserId, 'chess:your-turn', {
       gameId: game.id,
       opponentUsername: opponent?.username ?? null,
+      // The side to move is the only side that can be in check, so if the
+      // position is a check it's the recipient who's in it.
+      inCheck: new Chess(game.fen).isCheck(),
     });
+  }
+
+  private scheduleComputerMove(id: number): void {
+    if (this.pendingComputerMoves.has(id)) return;
+    this.pendingComputerMoves.add(id);
+
+    const delay =
+      BOT_REPLY_MIN_DELAY_MS + Math.floor(Math.random() * BOT_REPLY_JITTER_MS);
+    setTimeout(() => {
+      this.playComputerMove(id)
+        .catch((err: unknown) =>
+          this.logger.error(
+            `Computer reply failed for game #${id}`,
+            err instanceof Error ? err.stack : String(err),
+          ),
+        )
+        .finally(() => this.pendingComputerMoves.delete(id));
+    }, delay);
+  }
+
+  private async playComputerMove(id: number): Promise<void> {
+    const game = await this.chessGameRepo.findById(id);
+    if (!this.computerToMove(game)) return;
+
+    let choice: EngineMove | null;
+    try {
+      choice = await this.engine.bestMove(game.fen);
+    } catch (err) {
+      // A stalled game is worse than a weak move: fall back to any legal
+      // move so the human is never left staring at a board that won't
+      // answer.
+      this.logger.warn(
+        `Engine failed for game #${id} (${err instanceof Error ? err.message : err}); playing a random legal move`,
+      );
+      choice = this.randomLegalMove(game.fen);
+    }
+    if (!choice) return;
+
+    // The engine takes a moment; the human may have resigned (or the game
+    // may have been ended by a sweep) while it thought. Re-read and make
+    // sure the position is still the one we searched.
+    const fresh = await this.chessGameRepo.findById(id);
+    if (!this.computerToMove(fresh) || fresh.fen !== game.fen) return;
+
+    const result = await this.executeMove(
+      fresh,
+      'black',
+      choice.from,
+      choice.to,
+      choice.promotion,
+    );
+    this.logger.log(`chess move game=${id} ${result.san} by computer`);
+  }
+
+  private computerToMove(game: ChessGame | null): game is ChessGame {
+    return (
+      !!game &&
+      game.status === 'active' &&
+      game.vsComputer &&
+      game.turn === 'black'
+    );
+  }
+
+  private randomLegalMove(fen: string): EngineMove | null {
+    const moves = new Chess(fen).moves({ verbose: true });
+    if (!moves.length) return null;
+    const m = moves[Math.floor(Math.random() * moves.length)];
+    return { from: m.from, to: m.to, promotion: m.promotion };
+  }
+
+  // The computer always declines: offering a draw is how a human asks for a
+  // half point they haven't earned, and a fixed-strength bot has no honest
+  // basis to accept one. Sent as the normal draw-declined event so the UI's
+  // existing "Draw declined." handling covers it.
+  private scheduleComputerDrawDecline(id: number): void {
+    setTimeout(() => {
+      this.declineComputerDraw(id).catch((err: unknown) =>
+        this.logger.error(
+          `Computer draw response failed for game #${id}`,
+          err instanceof Error ? err.stack : String(err),
+        ),
+      );
+    }, BOT_DRAW_RESPONSE_DELAY_MS);
+  }
+
+  private async declineComputerDraw(id: number): Promise<void> {
+    const game = await this.chessGameRepo.findById(id);
+    if (
+      !game ||
+      game.status !== 'active' ||
+      !game.vsComputer ||
+      game.drawOfferedBy !== 'white'
+    ) {
+      return; // moved on (a move lapses the offer) or the game ended
+    }
+    game.drawOfferedBy = null;
+    await this.chessGameRepo.save(game);
+    this.eventsService.broadcastToRoom(
+      this.roomFor(id),
+      'chess:draw-declined',
+      { gameId: id },
+    );
+  }
+
+  // The computer is an ordinary local User row (never an Auth0 identity),
+  // created on first use - same on-demand approach as ensureLocalUser.
+  private async ensureBotUser(): Promise<string> {
+    let bot = await this.userService.findAuth0User(CHESS_BOT_USER_ID);
+    if (!bot?.auth0UserId) {
+      bot = await this.userService.createLocalUser(
+        CHESS_BOT_USER_ID,
+        CHESS_BOT_USERNAME,
+      );
+    }
+    return bot.auth0UserId;
   }
 
   private roomFor(id: number): string {
