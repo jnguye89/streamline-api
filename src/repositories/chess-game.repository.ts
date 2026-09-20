@@ -53,6 +53,7 @@ export class ChessGameRepository {
       turn: 'white',
       winner: null,
       drawOfferedBy: null,
+      vsComputer: false,
       // Null, not "now" - nobody's turn is actually running while the game
       // is still 'waiting' for a second player. Set for real the moment it
       // goes active, in setBlackUserAndActivate below.
@@ -66,12 +67,17 @@ export class ChessGameRepository {
   // save() with a bare partial object instead of mutating a loaded
   // ChessGame's `.blackUser` relation property directly, which is why this
   // is a repository method rather than inline in ChessService.joinGame.
-  async setBlackUserAndActivate(id: number, blackUserId: string): Promise<void> {
+  async setBlackUserAndActivate(
+    id: number,
+    blackUserId: string,
+    vsComputer = false,
+  ): Promise<void> {
     await this.chessGameRepo.save({
       id,
       blackUser: { auth0UserId: blackUserId },
       status: 'active',
       turnStartedAt: new Date(),
+      vsComputer,
     });
   }
 
@@ -94,6 +100,23 @@ export class ChessGameRepository {
       .where('g.status = :status', { status: 'active' })
       .andWhere('g.turnStartedAt IS NOT NULL')
       .andWhere('g.turnStartedAt < :cutoff', { cutoff })
+      .getMany();
+  }
+
+  // Vs-computer games where it's the computer's (black's) move - i.e. a
+  // reply that was pending in memory when the process went down, or that
+  // failed. Used to resume them on boot and from the timeout sweep, since
+  // the "computer to move" state isn't something a human is around to
+  // nudge along.
+  async findActiveComputerGamesAwaitingBot(): Promise<ChessGame[]> {
+    return this.chessGameRepo
+      .createQueryBuilder('g')
+      // Same QueryBuilder-doesn't-honor-`eager: true` gap as findOpen().
+      .leftJoinAndSelect('g.whiteUser', 'whiteUser')
+      .leftJoinAndSelect('g.blackUser', 'blackUser')
+      .where('g.status = :status', { status: 'active' })
+      .andWhere('g.vsComputer = :vs', { vs: true })
+      .andWhere('g.turn = :turn', { turn: 'black' })
       .getMany();
   }
 

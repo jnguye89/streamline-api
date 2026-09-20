@@ -30,6 +30,15 @@ export type ChessWinner = 'white' | 'black' | 'draw';
 export const CHESS_STARTING_FEN =
   'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
+// The built-in Stockfish opponent occupies the black seat of a vs-computer
+// game as an ordinary local User row (see ChessService.ensureBotUser), so
+// everything that already assumes an active game has two seated users -
+// the UI's name display, mySeat checks, eager relations - keeps working
+// without special cases. It is never an Auth0 identity: nothing can log in
+// as it, and nothing should try to sync it against Auth0.
+export const CHESS_BOT_USER_ID = 'bot|stockfish';
+export const CHESS_BOT_USERNAME = 'Computer';
+
 @Entity()
 export class ChessGame {
   @PrimaryGeneratedColumn()
@@ -120,4 +129,12 @@ export class ChessGame {
 
   @Column({ type: 'timestamp', name: 'ended_at', nullable: true })
   endedAt!: Date | null;
+
+  // True when the black seat is held by the built-in computer opponent
+  // rather than a second human. Set once, by ChessService.playComputer,
+  // and never changes for the life of the game. A plain boolean with a
+  // DB-level default so `synchronize` can add it onto existing rows (all of
+  // which are human-vs-human, i.e. false) without a backfill.
+  @Column({ type: 'boolean', name: 'vs_computer', default: false })
+  vsComputer!: boolean;
 }

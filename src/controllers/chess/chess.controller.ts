@@ -39,6 +39,17 @@ export class ChessController {
     return this.chessService.joinGame(id, user.userId);
   }
 
+  // Creator-only: fills the open black seat with the built-in computer
+  // opponent instead of waiting for a second human. Requires auth like every
+  // other mutating chess route (no @Public()).
+  @Post(':id/computer')
+  async playComputer(
+    @Param('id', ParseIntPipe) id: number,
+    @User() user: UserDto,
+  ): Promise<ChessGame> {
+    return this.chessService.playComputer(id, user.userId);
+  }
+
   @Post(':id/resign')
   async resign(
     @Param('id', ParseIntPipe) id: number,

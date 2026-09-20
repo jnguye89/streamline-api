@@ -58,6 +58,7 @@
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.1",
+    "stockfish": "19.0.0",
     "typeorm": "^0.3.24",
     "uuid": "^11.1.0",
     "voximplant-websdk": "^4.9.0-2915",
