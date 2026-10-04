@@ -80,6 +80,10 @@ import { ChessEngineService } from './services/chess/chess-engine.service';
 import { ChessTimeoutSchedulerService } from './services/chess/chess-timeout-scheduler.service';
 import { ChessController } from './controllers/chess/chess.controller';
 import { ChessGateway } from './controllers/chess/chess.gateway';
+import { Multistream } from './entity/multistream.entity';
+import { MultistreamRepository } from './repositories/multistream.repository';
+import { MultistreamService } from './services/multistream.service';
+import { AgoraMediaPushService } from './services/third-party/agora/agora-media-push.service';
 
 @Module({
   imports: [
@@ -147,6 +151,7 @@ import { ChessGateway } from './controllers/chess/chess.gateway';
       Podcast,
       YoutubeChannel,
       ChessGame,
+      Multistream,
     ]),
   ],
   controllers: [
@@ -202,6 +207,9 @@ import { ChessGateway } from './controllers/chess/chess.gateway';
     LogService,
     AgoraTokenService,
     AgoraRecordingService,
+    AgoraMediaPushService,
+    MultistreamRepository,
+    MultistreamService,
     EventsService,
     EventsGateway,
     DeviceAuthService,
