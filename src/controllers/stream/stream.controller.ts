@@ -12,10 +12,13 @@ import {
 
 import { Public } from 'src/auth/public.decorator';
 import { User } from 'src/auth/user.decorator';
+import { MultistreamStatusDto } from 'src/dto/multistream.dto';
 import { UserDto } from 'src/dto/user.dto';
 import { AgoraStream } from 'src/entity/agora-stream.entity';
 import { Stream } from 'src/entity/stream.entity';
+import { StreamPlatform } from 'src/enums/stream-platform.enum';
 import { AgoraStreamRepository } from 'src/repositories/agora-stream.repository';
+import { MultistreamService } from 'src/services/multistream.service';
 import { StreamService } from 'src/services/stream.service';
 import { AgoraRecordingService } from 'src/services/third-party/agora/agora-recording.service';
 import { AgoraTokenService } from 'src/services/third-party/agora/agora-token.service';
@@ -32,6 +35,7 @@ export default class StreamController {
     private agoraStreamRepository: AgoraStreamRepository,
     private agoraRecordingService: AgoraRecordingService,
     private userService: UserService,
+    private multistreamService: MultistreamService,
   ) {}
 
   @Get()
@@ -84,9 +88,10 @@ export default class StreamController {
   @Put('publish')
   async publishStream(
     @User() user: UserDto,
-    @Body() dto: { channelName: string },
-  ) {
+    @Body() dto: { channelName: string; multistream?: StreamPlatform[] },
+  ): Promise<{ ok: true; multistream: MultistreamStatusDto[] }> {
     const channelName = this.requireChannelName(dto?.channelName);
+    const platforms = this.multistreamService.parsePlatforms(dto?.multistream);
     const stream =
       await this.agoraStreamRepository.findByChannelName(channelName);
     if (!stream) {
@@ -101,7 +106,15 @@ export default class StreamController {
       await this.agoraRecordingService.getResourceId(channelName, user.userId);
       await this.agoraRecordingService.startRecording(channelName);
     }
-    return { ok: true };
+    // Restream failures are reported per platform instead of thrown, so a
+    // bad Twitch key never stops the stream itself from going live.
+    const multistream = await this.multistreamService.start(
+      channelName,
+      user.userId,
+      stream.user.agoraUserId,
+      platforms,
+    );
+    return { ok: true, multistream };
   }
 
   @Post('heartbeat')
@@ -136,6 +149,7 @@ export default class StreamController {
     }
     stream.status = 'ended';
     await this.agoraStreamRepository.save(stream);
+    await this.multistreamService.stopAll(channelName);
     const filename = this.cloudRecordingEnabled
       ? await this.agoraRecordingService.stopRecording(channelName)
       : undefined;
