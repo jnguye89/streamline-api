@@ -1,3 +1,14 @@
 Dockerfile
 .dockerignore
 nest-cli.worker.json
+
+# stockfish's postinstall (node_modules/stockfish/scripts/postinstall.js)
+# links bin/stockfish.wasm with an ABSOLUTE path, so once the bundle is
+# unpacked on the instance the link points nowhere and EB's chown aborts the
+# deploy. The API runs the lite-single build directly
+# (src/services/chess/chess-engine.service.ts), so neither the link nor the
+# ~200 MB of other engine builds are ever used; keep them out of the bundle.
+node_modules/stockfish/bin/stockfish.wasm
+node_modules/stockfish/bin/stockfish-19.wasm
+node_modules/stockfish/bin/stockfish-19-single.wasm
+node_modules/stockfish/bin/stockfish-19-asm.js
