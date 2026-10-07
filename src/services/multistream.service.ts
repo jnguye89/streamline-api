@@ -13,8 +13,16 @@ const PLATFORM_LABELS: Record<StreamPlatform, string> = {
   [StreamPlatform.RUMBLE]: 'Rumble',
 };
 
-/** Platforms a live stream can currently be restreamed to. */
-const MULTISTREAM_PLATFORMS = new Set<StreamPlatform>([StreamPlatform.TWITCH]);
+/**
+ * Platforms a live stream can currently be restreamed to. Twitch has one
+ * well-known ingest; Kick's is per account (an RTMPS URL from its Creator
+ * Dashboard), so it comes from the saved stream key's streamUrl. Agora Media
+ * Push accepts RTMPS only with transcoding, which our converter always uses.
+ */
+const MULTISTREAM_PLATFORMS = new Set<StreamPlatform>([
+  StreamPlatform.TWITCH,
+  StreamPlatform.KICK,
+]);
 
 @Injectable()
 export class MultistreamService {
@@ -143,6 +151,14 @@ export class MultistreamService {
         error: `No ${label} stream key is saved`,
       };
     }
+    const ingestUrl = this.ingestUrl(platform, streamKey);
+    if (!ingestUrl) {
+      return {
+        platform,
+        status: 'error',
+        error: `No ${label} stream URL is saved`,
+      };
+    }
 
     let multistream: Multistream | undefined;
     try {
@@ -159,7 +175,7 @@ export class MultistreamService {
         name: this.converterName(channelName, platform),
         channelName,
         hostUid,
-        rtmpUrl: this.rtmpUrl(platform, key),
+        rtmpUrl: `${ingestUrl}/${key}`,
         region: multistream.region,
       });
       multistream.converterId = converter.id;
@@ -203,13 +219,13 @@ export class MultistreamService {
     }
   }
 
-  private rtmpUrl(platform: StreamPlatform, streamKey: string): string {
-    switch (platform) {
-      case StreamPlatform.TWITCH:
-        return `${this.twitchIngestUrl}/${streamKey}`;
-      default:
-        throw new Error(`Multistreaming is not supported for ${platform}`);
-    }
+  /** The ingest URL the stream key gets appended to, without a trailing slash. */
+  private ingestUrl(
+    platform: StreamPlatform,
+    streamKey: StreamKey,
+  ): string | undefined {
+    if (platform === StreamPlatform.TWITCH) return this.twitchIngestUrl;
+    return streamKey.streamUrl?.trim().replace(/\/+$/, '') || undefined;
   }
 
   /**
