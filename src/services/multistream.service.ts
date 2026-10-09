@@ -15,13 +15,15 @@ const PLATFORM_LABELS: Record<StreamPlatform, string> = {
 
 /**
  * Platforms a live stream can currently be restreamed to. Twitch has one
- * well-known ingest; Kick's is per account (an RTMPS URL from its Creator
- * Dashboard), so it comes from the saved stream key's streamUrl. Agora Media
- * Push accepts RTMPS only with transcoding, which our converter always uses.
+ * well-known ingest; Kick's and Rumble's are per account (from their
+ * creator dashboards), so they come from the saved stream key's streamUrl.
+ * Kick's is RTMPS, which Agora Media Push accepts only with transcoding -
+ * our converter always transcodes.
  */
 const MULTISTREAM_PLATFORMS = new Set<StreamPlatform>([
   StreamPlatform.TWITCH,
   StreamPlatform.KICK,
+  StreamPlatform.RUMBLE,
 ]);
 
 @Injectable()

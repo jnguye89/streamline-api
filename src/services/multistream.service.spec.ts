@@ -82,11 +82,12 @@ describe('MultistreamService', () => {
     });
 
     it('rejects unsupported platforms and non-arrays', () => {
-      expect(service.parsePlatforms(['twitch', 'kick'])).toEqual([
+      expect(service.parsePlatforms(['twitch', 'kick', 'rumble'])).toEqual([
         StreamPlatform.TWITCH,
         StreamPlatform.KICK,
+        StreamPlatform.RUMBLE,
       ]);
-      expect(() => service.parsePlatforms(['rumble'])).toThrow(
+      expect(() => service.parsePlatforms(['youtube'])).toThrow(
         BadRequestException,
       );
       expect(() => service.parsePlatforms('twitch')).toThrow(
@@ -164,6 +165,31 @@ describe('MultistreamService', () => {
         name: expect.stringContaining('_kick_') as string,
         rtmpUrl:
           'rtmps://fa723fc1b171.global-contribute.live-video.net:443/app/sk_us-west-2_abc',
+      }),
+    );
+  });
+
+  it('pushes to Rumble using the saved ingest URL', async () => {
+    streamKeyRepo.findAllByUserId.mockResolvedValue([
+      {
+        userId,
+        platform: StreamPlatform.RUMBLE,
+        streamKey: 'r8-xyz',
+        streamUrl: 'rtmp://rtmp.rumble.com/live',
+      },
+    ]);
+
+    const result = await service.start(channelName, userId, hostUid, [
+      StreamPlatform.RUMBLE,
+    ]);
+
+    expect(result).toEqual([
+      { platform: StreamPlatform.RUMBLE, status: 'active' },
+    ]);
+    expect(mediaPush.createConverter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: expect.stringContaining('_rumble_') as string,
+        rtmpUrl: 'rtmp://rtmp.rumble.com/live/r8-xyz',
       }),
     );
   });
