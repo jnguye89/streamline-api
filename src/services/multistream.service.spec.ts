@@ -82,7 +82,12 @@ describe('MultistreamService', () => {
     });
 
     it('rejects unsupported platforms and non-arrays', () => {
-      expect(() => service.parsePlatforms(['kick'])).toThrow(
+      expect(service.parsePlatforms(['twitch', 'kick', 'rumble'])).toEqual([
+        StreamPlatform.TWITCH,
+        StreamPlatform.KICK,
+        StreamPlatform.RUMBLE,
+      ]);
+      expect(() => service.parsePlatforms(['youtube'])).toThrow(
         BadRequestException,
       );
       expect(() => service.parsePlatforms('twitch')).toThrow(
@@ -135,6 +140,111 @@ describe('MultistreamService', () => {
       },
     ]);
     expect(mediaPush.createConverter).not.toHaveBeenCalled();
+  });
+
+  it('pushes to Kick using the saved per-account ingest URL', async () => {
+    streamKeyRepo.findAllByUserId.mockResolvedValue([
+      {
+        userId,
+        platform: StreamPlatform.KICK,
+        streamKey: 'sk_us-west-2_abc',
+        streamUrl:
+          'rtmps://fa723fc1b171.global-contribute.live-video.net:443/app/',
+      },
+    ]);
+
+    const result = await service.start(channelName, userId, hostUid, [
+      StreamPlatform.KICK,
+    ]);
+
+    expect(result).toEqual([
+      { platform: StreamPlatform.KICK, status: 'active' },
+    ]);
+    expect(mediaPush.createConverter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: expect.stringContaining('_kick_') as string,
+        rtmpUrl:
+          'rtmps://fa723fc1b171.global-contribute.live-video.net:443/app/sk_us-west-2_abc',
+      }),
+    );
+  });
+
+  it('pushes to Rumble using the saved ingest URL', async () => {
+    streamKeyRepo.findAllByUserId.mockResolvedValue([
+      {
+        userId,
+        platform: StreamPlatform.RUMBLE,
+        streamKey: 'r8-xyz',
+        streamUrl: 'rtmp://rtmp.rumble.com/live',
+      },
+    ]);
+
+    const result = await service.start(channelName, userId, hostUid, [
+      StreamPlatform.RUMBLE,
+    ]);
+
+    expect(result).toEqual([
+      { platform: StreamPlatform.RUMBLE, status: 'active' },
+    ]);
+    expect(mediaPush.createConverter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: expect.stringContaining('_rumble_') as string,
+        rtmpUrl: 'rtmp://rtmp.rumble.com/live/r8-xyz',
+      }),
+    );
+  });
+
+  it('reports a Kick key saved without its stream URL', async () => {
+    streamKeyRepo.findAllByUserId.mockResolvedValue([
+      { userId, platform: StreamPlatform.KICK, streamKey: 'sk_abc' },
+    ]);
+
+    const result = await service.start(channelName, userId, hostUid, [
+      StreamPlatform.KICK,
+    ]);
+
+    expect(result).toEqual([
+      {
+        platform: StreamPlatform.KICK,
+        status: 'error',
+        error: 'No Kick stream URL is saved',
+      },
+    ]);
+    expect(mediaPush.createConverter).not.toHaveBeenCalled();
+  });
+
+  it('starts one converter per platform and reports each separately', async () => {
+    streamKeyRepo.findAllByUserId.mockResolvedValue([
+      { userId, platform: StreamPlatform.TWITCH, streamKey: 'live_123' },
+      {
+        userId,
+        platform: StreamPlatform.KICK,
+        streamKey: 'sk_abc',
+        streamUrl: 'rtmps://x.global-contribute.live-video.net:443/app',
+      },
+    ]);
+    mediaPush.createConverter
+      .mockResolvedValueOnce({ id: 'converter-1' })
+      .mockResolvedValueOnce({ id: 'converter-2' });
+
+    const result = await service.start(channelName, userId, hostUid, [
+      StreamPlatform.TWITCH,
+      StreamPlatform.KICK,
+    ]);
+
+    expect(result).toEqual([
+      { platform: StreamPlatform.TWITCH, status: 'active' },
+      { platform: StreamPlatform.KICK, status: 'active' },
+    ]);
+    expect(mediaPush.createConverter).toHaveBeenCalledTimes(2);
+    expect(rows.map((row) => [row.platform, row.converterId])).toEqual([
+      [StreamPlatform.TWITCH, 'converter-1'],
+      [StreamPlatform.KICK, 'converter-2'],
+    ]);
+
+    await service.stopAll(channelName);
+    expect(mediaPush.deleteConverter).toHaveBeenCalledTimes(2);
+    expect(rows.every((row) => row.status === 'stopped')).toBe(true);
   });
 
   it('reports an Agora failure instead of throwing', async () => {
