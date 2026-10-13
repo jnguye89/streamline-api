@@ -67,6 +67,16 @@ export class AgoraMediaPushService {
     'AGORA_MEDIA_PUSH_IDLE_TIMEOUT_SECONDS',
     60,
   );
+  // How long Agora holds the host's stream before encoding it, to ride out
+  // network jitter. Agora's default is its maximum, 1000ms, and every ms of
+  // it lands on top of the platform's own delay for viewers, so trade some
+  // resilience for latency. Agora rounds up to 100ms steps; it advises
+  // against 0 (audio glitches on poor networks), and intEnv won't go there.
+  private readonly jitterBufferMs = Math.min(
+    1000,
+    Math.ceil(this.intEnv('AGORA_MEDIA_PUSH_JITTER_BUFFER_MS', 500) / 100) *
+      100,
+  );
 
   constructor(
     private agoraTokenService: AgoraTokenService,
@@ -109,6 +119,7 @@ export class AgoraMediaPushService {
         },
         rtmpUrl: options.rtmpUrl,
         idleTimeout: this.idleTimeout,
+        jitterBufferSizeMs: this.jitterBufferMs,
       },
     };
 
