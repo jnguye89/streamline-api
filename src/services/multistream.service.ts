@@ -11,17 +11,19 @@ const PLATFORM_LABELS: Record<StreamPlatform, string> = {
   [StreamPlatform.TWITCH]: 'Twitch',
   [StreamPlatform.KICK]: 'Kick',
   [StreamPlatform.RUMBLE]: 'Rumble',
+  [StreamPlatform.YOUTUBE]: 'YouTube',
 };
 
 /**
- * Platforms a live stream can currently be restreamed to. Twitch has one
- * well-known ingest; Kick's and Rumble's are per account (from their
- * creator dashboards), so they come from the saved stream key's streamUrl.
- * Kick's is RTMPS, which Agora Media Push accepts only with transcoding -
- * our converter always transcodes.
+ * Platforms a live stream can currently be restreamed to. Twitch and
+ * YouTube have one well-known ingest each; Kick's and Rumble's are per
+ * account (from their creator dashboards), so they come from the saved
+ * stream key's streamUrl. Kick's is RTMPS, which Agora Media Push accepts
+ * only with transcoding - our converter always transcodes.
  */
 const MULTISTREAM_PLATFORMS = new Set<StreamPlatform>([
   StreamPlatform.TWITCH,
+  StreamPlatform.YOUTUBE,
   StreamPlatform.KICK,
   StreamPlatform.RUMBLE,
 ]);
@@ -53,6 +55,9 @@ export class MultistreamService {
   private readonly logger = new Logger(MultistreamService.name);
   private readonly twitchIngestUrl = (
     process.env.TWITCH_INGEST_URL || 'rtmp://live.twitch.tv/app'
+  ).replace(/\/+$/, '');
+  private readonly youtubeIngestUrl = (
+    process.env.YOUTUBE_INGEST_URL || 'rtmp://a.rtmp.youtube.com/live2'
   ).replace(/\/+$/, '');
 
   constructor(
@@ -249,6 +254,7 @@ export class MultistreamService {
     streamKey: StreamKey,
   ): string | undefined {
     if (platform === StreamPlatform.TWITCH) return this.twitchIngestUrl;
+    if (platform === StreamPlatform.YOUTUBE) return this.youtubeIngestUrl;
     const saved = streamKey.streamUrl?.trim().replace(/\/+$/, '');
     if (!saved) return undefined;
     return platform === StreamPlatform.KICK ? completeKickIngest(saved) : saved;

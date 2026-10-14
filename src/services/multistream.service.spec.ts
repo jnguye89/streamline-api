@@ -82,12 +82,15 @@ describe('MultistreamService', () => {
     });
 
     it('rejects unsupported platforms and non-arrays', () => {
-      expect(service.parsePlatforms(['twitch', 'kick', 'rumble'])).toEqual([
+      expect(
+        service.parsePlatforms(['twitch', 'kick', 'rumble', 'youtube']),
+      ).toEqual([
         StreamPlatform.TWITCH,
         StreamPlatform.KICK,
         StreamPlatform.RUMBLE,
+        StreamPlatform.YOUTUBE,
       ]);
-      expect(() => service.parsePlatforms(['youtube'])).toThrow(
+      expect(() => service.parsePlatforms(['facebook'])).toThrow(
         BadRequestException,
       );
       expect(() => service.parsePlatforms('twitch')).toThrow(
@@ -165,6 +168,26 @@ describe('MultistreamService', () => {
         name: expect.stringContaining('_kick_') as string,
         rtmpUrl:
           'rtmps://fa723fc1b171.global-contribute.live-video.net:443/app/sk_us-west-2_abc',
+      }),
+    );
+  });
+
+  it('pushes to YouTube with its fixed ingest, key only', async () => {
+    streamKeyRepo.findAllByUserId.mockResolvedValue([
+      { userId, platform: StreamPlatform.YOUTUBE, streamKey: 'abcd-1234' },
+    ]);
+
+    const result = await service.start(channelName, userId, hostUid, [
+      StreamPlatform.YOUTUBE,
+    ]);
+
+    expect(result).toEqual([
+      { platform: StreamPlatform.YOUTUBE, status: 'active' },
+    ]);
+    expect(mediaPush.createConverter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: expect.stringContaining('_youtube_') as string,
+        rtmpUrl: 'rtmp://a.rtmp.youtube.com/live2/abcd-1234',
       }),
     );
   });
