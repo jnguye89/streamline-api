@@ -26,6 +26,28 @@ const MULTISTREAM_PLATFORMS = new Set<StreamPlatform>([
   StreamPlatform.RUMBLE,
 ]);
 
+/**
+ * Kick's dashboard shows only the ingest host
+ * (rtmps://<id>.global-contribute.live-video.net/) and relies on streaming
+ * software to add the port and application itself - Kick's own "custom
+ * RTMP" instructions give rtmps://<id>.global-contribute.live-video.net:443/app.
+ * A push to the bare host is silently ignored, so fill in whatever the user
+ * left out; a URL that already has them is returned unchanged.
+ */
+export function completeKickIngest(url: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url;
+  }
+  if (!parsed.port) parsed.port = '443';
+  if (parsed.pathname === '' || parsed.pathname === '/') {
+    parsed.pathname = '/app';
+  }
+  return parsed.toString().replace(/\/+$/, '');
+}
+
 @Injectable()
 export class MultistreamService {
   private readonly logger = new Logger(MultistreamService.name);
@@ -227,7 +249,9 @@ export class MultistreamService {
     streamKey: StreamKey,
   ): string | undefined {
     if (platform === StreamPlatform.TWITCH) return this.twitchIngestUrl;
-    return streamKey.streamUrl?.trim().replace(/\/+$/, '') || undefined;
+    const saved = streamKey.streamUrl?.trim().replace(/\/+$/, '');
+    if (!saved) return undefined;
+    return platform === StreamPlatform.KICK ? completeKickIngest(saved) : saved;
   }
 
   /**

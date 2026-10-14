@@ -194,6 +194,42 @@ describe('MultistreamService', () => {
     );
   });
 
+  it('completes a Kick ingest copied straight from its dashboard', async () => {
+    for (const [saved, pushed] of [
+      // What the dashboard shows: host only, trailing slash.
+      [
+        'rtmps://fa723fc1b171.global-contribute.live-video.net/',
+        'rtmps://fa723fc1b171.global-contribute.live-video.net:443/app/sk_abc',
+      ],
+      // Application present but no port.
+      [
+        'rtmps://fa723fc1b171.global-contribute.live-video.net/app',
+        'rtmps://fa723fc1b171.global-contribute.live-video.net:443/app/sk_abc',
+      ],
+      // Already complete: left alone.
+      [
+        'rtmps://fa723fc1b171.global-contribute.live-video.net:443/app',
+        'rtmps://fa723fc1b171.global-contribute.live-video.net:443/app/sk_abc',
+      ],
+    ]) {
+      mediaPush.createConverter.mockClear();
+      streamKeyRepo.findAllByUserId.mockResolvedValue([
+        {
+          userId,
+          platform: StreamPlatform.KICK,
+          streamKey: 'sk_abc',
+          streamUrl: saved,
+        },
+      ]);
+
+      await service.start(channelName, userId, hostUid, [StreamPlatform.KICK]);
+
+      expect(mediaPush.createConverter).toHaveBeenCalledWith(
+        expect.objectContaining({ rtmpUrl: pushed }),
+      );
+    }
+  });
+
   it('reports a Kick key saved without its stream URL', async () => {
     streamKeyRepo.findAllByUserId.mockResolvedValue([
       { userId, platform: StreamPlatform.KICK, streamKey: 'sk_abc' },
