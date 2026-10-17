@@ -11,26 +11,53 @@ const PLATFORM_LABELS: Record<StreamPlatform, string> = {
   [StreamPlatform.TWITCH]: 'Twitch',
   [StreamPlatform.KICK]: 'Kick',
   [StreamPlatform.RUMBLE]: 'Rumble',
+  [StreamPlatform.YOUTUBE]: 'YouTube',
 };
 
 /**
- * Platforms a live stream can currently be restreamed to. Twitch has one
- * well-known ingest; Kick's and Rumble's are per account (from their
- * creator dashboards), so they come from the saved stream key's streamUrl.
- * Kick's is RTMPS, which Agora Media Push accepts only with transcoding -
- * our converter always transcodes.
+ * Platforms a live stream can currently be restreamed to. Twitch and
+ * YouTube have one well-known ingest each; Kick's and Rumble's are per
+ * account (from their creator dashboards), so they come from the saved
+ * stream key's streamUrl. Kick's is RTMPS, which Agora Media Push accepts
+ * only with transcoding - our converter always transcodes.
  */
 const MULTISTREAM_PLATFORMS = new Set<StreamPlatform>([
   StreamPlatform.TWITCH,
+  StreamPlatform.YOUTUBE,
   StreamPlatform.KICK,
   StreamPlatform.RUMBLE,
 ]);
+
+/**
+ * Kick's dashboard shows only the ingest host
+ * (rtmps://<id>.global-contribute.live-video.net/) and relies on streaming
+ * software to add the port and application itself - Kick's own "custom
+ * RTMP" instructions give rtmps://<id>.global-contribute.live-video.net:443/app.
+ * A push to the bare host is silently ignored, so fill in whatever the user
+ * left out; a URL that already has them is returned unchanged.
+ */
+export function completeKickIngest(url: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url;
+  }
+  if (!parsed.port) parsed.port = '443';
+  if (parsed.pathname === '' || parsed.pathname === '/') {
+    parsed.pathname = '/app';
+  }
+  return parsed.toString().replace(/\/+$/, '');
+}
 
 @Injectable()
 export class MultistreamService {
   private readonly logger = new Logger(MultistreamService.name);
   private readonly twitchIngestUrl = (
     process.env.TWITCH_INGEST_URL || 'rtmp://live.twitch.tv/app'
+  ).replace(/\/+$/, '');
+  private readonly youtubeIngestUrl = (
+    process.env.YOUTUBE_INGEST_URL || 'rtmp://a.rtmp.youtube.com/live2'
   ).replace(/\/+$/, '');
 
   constructor(
@@ -227,7 +254,10 @@ export class MultistreamService {
     streamKey: StreamKey,
   ): string | undefined {
     if (platform === StreamPlatform.TWITCH) return this.twitchIngestUrl;
-    return streamKey.streamUrl?.trim().replace(/\/+$/, '') || undefined;
+    if (platform === StreamPlatform.YOUTUBE) return this.youtubeIngestUrl;
+    const saved = streamKey.streamUrl?.trim().replace(/\/+$/, '');
+    if (!saved) return undefined;
+    return platform === StreamPlatform.KICK ? completeKickIngest(saved) : saved;
   }
 
   /**

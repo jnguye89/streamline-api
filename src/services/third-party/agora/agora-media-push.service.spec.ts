@@ -10,6 +10,7 @@ interface ConverterBody {
     name: string;
     rtmpUrl: string;
     idleTimeout: number;
+    jitterBufferSizeMs: number;
     transcodeOptions: {
       rtcChannel: string;
       audioOptions: { rtcStreamUids: number[] };
@@ -24,9 +25,7 @@ describe('AgoraMediaPushService', () => {
   let http: { post: jest.Mock; delete: jest.Mock };
   let service: AgoraMediaPushService;
 
-  beforeEach(async () => {
-    process.env.AGORA_APP_ID = 'app-id';
-    http = { post: jest.fn(), delete: jest.fn() };
+  async function buildService(): Promise<AgoraMediaPushService> {
     const module = await Test.createTestingModule({
       providers: [
         AgoraMediaPushService,
@@ -37,7 +36,14 @@ describe('AgoraMediaPushService', () => {
         },
       ],
     }).compile();
-    service = module.get(AgoraMediaPushService);
+    return module.get(AgoraMediaPushService);
+  }
+
+  beforeEach(async () => {
+    process.env.AGORA_APP_ID = 'app-id';
+    delete process.env.AGORA_MEDIA_PUSH_JITTER_BUFFER_MS;
+    http = { post: jest.fn(), delete: jest.fn() };
+    service = await buildService();
   });
 
   it('creates a transcoding converter for the host UID', async () => {
@@ -68,6 +74,7 @@ describe('AgoraMediaPushService', () => {
         name: 'host_abc_twitch_1',
         rtmpUrl,
         idleTimeout: 60,
+        jitterBufferSizeMs: 500,
       }),
     );
     const { rtcChannel, audioOptions, videoOptions } =
@@ -88,6 +95,28 @@ describe('AgoraMediaPushService', () => {
         region: { xPos: 0, yPos: 0, zIndex: 1, width: 1280, height: 720 },
       }),
     ]);
+  });
+
+  it('rounds the jitter buffer up to 100ms steps and caps it at 1s', async () => {
+    for (const [configured, sent] of [
+      ['250', 300],
+      ['5000', 1000],
+    ] as const) {
+      process.env.AGORA_MEDIA_PUSH_JITTER_BUFFER_MS = configured;
+      const configuredService = await buildService();
+      http.post.mockReturnValue(of({ data: { converter: { id: 'c' } } }));
+
+      await configuredService.createConverter({
+        name: 'n',
+        channelName: 'c',
+        hostUid: 1,
+        rtmpUrl,
+        region: 'na',
+      });
+
+      const [, body] = http.post.mock.calls.at(-1) as [string, ConverterBody];
+      expect(body.converter.jitterBufferSizeMs).toBe(sent);
+    }
   });
 
   it('reports Agora errors without leaking the stream key', async () => {

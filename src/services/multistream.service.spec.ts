@@ -82,12 +82,15 @@ describe('MultistreamService', () => {
     });
 
     it('rejects unsupported platforms and non-arrays', () => {
-      expect(service.parsePlatforms(['twitch', 'kick', 'rumble'])).toEqual([
+      expect(
+        service.parsePlatforms(['twitch', 'kick', 'rumble', 'youtube']),
+      ).toEqual([
         StreamPlatform.TWITCH,
         StreamPlatform.KICK,
         StreamPlatform.RUMBLE,
+        StreamPlatform.YOUTUBE,
       ]);
-      expect(() => service.parsePlatforms(['youtube'])).toThrow(
+      expect(() => service.parsePlatforms(['facebook'])).toThrow(
         BadRequestException,
       );
       expect(() => service.parsePlatforms('twitch')).toThrow(
@@ -169,6 +172,26 @@ describe('MultistreamService', () => {
     );
   });
 
+  it('pushes to YouTube with its fixed ingest, key only', async () => {
+    streamKeyRepo.findAllByUserId.mockResolvedValue([
+      { userId, platform: StreamPlatform.YOUTUBE, streamKey: 'abcd-1234' },
+    ]);
+
+    const result = await service.start(channelName, userId, hostUid, [
+      StreamPlatform.YOUTUBE,
+    ]);
+
+    expect(result).toEqual([
+      { platform: StreamPlatform.YOUTUBE, status: 'active' },
+    ]);
+    expect(mediaPush.createConverter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: expect.stringContaining('_youtube_') as string,
+        rtmpUrl: 'rtmp://a.rtmp.youtube.com/live2/abcd-1234',
+      }),
+    );
+  });
+
   it('pushes to Rumble using the saved ingest URL', async () => {
     streamKeyRepo.findAllByUserId.mockResolvedValue([
       {
@@ -192,6 +215,42 @@ describe('MultistreamService', () => {
         rtmpUrl: 'rtmp://rtmp.rumble.com/live/r8-xyz',
       }),
     );
+  });
+
+  it('completes a Kick ingest copied straight from its dashboard', async () => {
+    for (const [saved, pushed] of [
+      // What the dashboard shows: host only, trailing slash.
+      [
+        'rtmps://fa723fc1b171.global-contribute.live-video.net/',
+        'rtmps://fa723fc1b171.global-contribute.live-video.net:443/app/sk_abc',
+      ],
+      // Application present but no port.
+      [
+        'rtmps://fa723fc1b171.global-contribute.live-video.net/app',
+        'rtmps://fa723fc1b171.global-contribute.live-video.net:443/app/sk_abc',
+      ],
+      // Already complete: left alone.
+      [
+        'rtmps://fa723fc1b171.global-contribute.live-video.net:443/app',
+        'rtmps://fa723fc1b171.global-contribute.live-video.net:443/app/sk_abc',
+      ],
+    ]) {
+      mediaPush.createConverter.mockClear();
+      streamKeyRepo.findAllByUserId.mockResolvedValue([
+        {
+          userId,
+          platform: StreamPlatform.KICK,
+          streamKey: 'sk_abc',
+          streamUrl: saved,
+        },
+      ]);
+
+      await service.start(channelName, userId, hostUid, [StreamPlatform.KICK]);
+
+      expect(mediaPush.createConverter).toHaveBeenCalledWith(
+        expect.objectContaining({ rtmpUrl: pushed }),
+      );
+    }
   });
 
   it('reports a Kick key saved without its stream URL', async () => {
