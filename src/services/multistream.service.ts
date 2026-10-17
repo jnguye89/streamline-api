@@ -251,11 +251,11 @@ export class MultistreamService {
   /** The ingest URL the stream key gets appended to, without a trailing slash. */
   private ingestUrl(
     platform: StreamPlatform,
-    streamKey: StreamKey,
+    streamKey: StreamKey | undefined,
   ): string | undefined {
     if (platform === StreamPlatform.TWITCH) return this.twitchIngestUrl;
     if (platform === StreamPlatform.YOUTUBE) return this.youtubeIngestUrl;
-    const saved = streamKey.streamUrl?.trim().replace(/\/+$/, '');
+    const saved = streamKey?.streamUrl?.trim().replace(/\/+$/, '');
     if (!saved) return undefined;
     return platform === StreamPlatform.KICK ? completeKickIngest(saved) : saved;
   }
