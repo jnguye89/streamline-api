@@ -66,6 +66,24 @@ export class Auth0Service {
     return {
       auth0UserId: data.user_id,
       username,
+      picture: data.picture ?? null,
     };
+  }
+
+  /**
+   * Sets the user's profile picture URL, which Auth0 then hands out in the `picture` claim.
+   * Needs the `update:users` scope on the management client.
+   */
+  async updatePicture(auth0UserId: string, picture: string): Promise<void> {
+    const token = await this.getToken();
+    await firstValueFrom(
+      this.http.patch(
+        `${process.env.AUTH0_MGMT_URL}/api/v2/users/${encodeURIComponent(auth0UserId)}`,
+        { picture },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      ),
+    );
   }
 }

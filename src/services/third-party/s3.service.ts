@@ -47,6 +47,32 @@ export class S3Service {
     return `https://${this.bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
   }
 
+  /**
+   * Stores a profile picture and returns its permanent public URL. Public, like uploaded
+   * audio, because the URL is saved as the user's Auth0 `picture` and has to keep working —
+   * a signed URL would expire. Each upload gets a fresh key, so clients never see a stale
+   * cached image.
+   */
+  async uploadProfilePicture(file: Express.Multer.File): Promise<string> {
+    const extension = mime.extension(file.mimetype);
+    if (!extension) {
+      throw new Error(`No file extension for ${file.mimetype}`);
+    }
+
+    const key = `avatars/${uuidv4()}.${extension}`;
+    await this.s3.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+        ACL: 'public-read' as ObjectCannedACL,
+      }),
+    );
+
+    return `https://${this.bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+  }
+
   async listFiles(prefix = 'uploads'): Promise<string[]> {
     try {
       const command = new ListObjectsV2Command({

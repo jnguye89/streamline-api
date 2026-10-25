@@ -14,6 +14,10 @@ export class User {
     @Column({ name: "username", type: "varchar", length: 256 })
     username!: string;
 
+    /** Profile picture URL, mirrored from Auth0 so other users can be shown with it. */
+    @Column({ name: "picture", type: "varchar", length: 1024, nullable: true })
+    picture!: string | null;
+
     @Column({ name: "last_synced_at", type: "timestamp", nullable: true })
     lastSyncedAt!: Date;
 
