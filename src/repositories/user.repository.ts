@@ -42,6 +42,7 @@ export class UserRepository {
       username: user.username,
       lastSyncedAt: new Date(),
     };
+    if (user.picture !== undefined) patch.picture = user.picture;
     const entity = await this.userRepo.preload({
       auth0UserId: user.auth0UserId,
       ...patch,
@@ -51,6 +52,11 @@ export class UserRepository {
     }
 
     return this.userRepo.save(entity);
+  }
+
+  /** Records a newly uploaded picture; a no-op for users without a local record yet. */
+  async updatePicture(auth0UserId: string, picture: string): Promise<void> {
+    await this.userRepo.update({ auth0UserId }, { picture });
   }
 
   async getUsers(): Promise<Auth0UserDto[]> {
