@@ -71,14 +71,14 @@ export class VideoRepository {
     await this.videoRepo.increment({ id }, 'likeCount', amount);
   }
 
-  /** Bumps every active video's counters by an independent random 1-100 amount, in one statement regardless of library size. */
+  /** Bumps every active video's views by a random 1-50 and likes by a random 1-10, in one statement regardless of library size. */
   async boostAllEngagement(): Promise<void> {
     await this.videoRepo
       .createQueryBuilder()
       .update(Video)
       .set({
-        viewCount: () => 'viewCount + FLOOR(1 + RAND() * 100)',
-        likeCount: () => 'likeCount + FLOOR(1 + RAND() * 100)',
+        viewCount: () => 'viewCount + FLOOR(1 + RAND() * 50)',
+        likeCount: () => 'likeCount + FLOOR(1 + RAND() * 10)',
       })
       .where('deletedAt IS NULL')
       .execute();
