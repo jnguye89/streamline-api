@@ -4,4 +4,6 @@ export class Auth0UserDto {
     picture?: string | null;
     lastSyncedAt?: Date;
     agoraUserId?: number;
+    deletedAt?: Date | null;
+    termsAcceptedAt?: Date | null;
 }

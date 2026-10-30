@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Like, Repository } from 'typeorm';
+import { IsNull, Like, Repository } from 'typeorm';
 
 import { Auth0UserDto } from 'src/dto/auth0-user.dto';
 import { User } from 'src/entity/user.entity';
@@ -54,13 +54,21 @@ export class UserRepository {
     return this.userRepo.save(entity);
   }
 
+  /** Records the first time they agreed to the terms; later agreements don't move it. */
+  async acceptTerms(auth0UserId: string): Promise<void> {
+    await this.userRepo.update(
+      { auth0UserId, termsAcceptedAt: IsNull() },
+      { termsAcceptedAt: new Date() },
+    );
+  }
+
   /** Records a newly uploaded picture; a no-op for users without a local record yet. */
   async updatePicture(auth0UserId: string, picture: string): Promise<void> {
     await this.userRepo.update({ auth0UserId }, { picture });
   }
 
   async getUsers(): Promise<Auth0UserDto[]> {
-    const users = await this.userRepo.find();
+    const users = await this.userRepo.find({ where: { deletedAt: IsNull() } });
     return users.map((user) => ({ ...user }));
   }
 
@@ -78,7 +86,7 @@ export class UserRepository {
     query: string,
   ): Promise<{ username: string; auth0UserId: string }[]> {
     return this.userRepo.find({
-      where: { username: Like(`%${query}%`) },
+      where: { username: Like(`%${query}%`), deletedAt: IsNull() },
       select: { username: true, auth0UserId: true },
     });
   }

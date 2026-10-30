@@ -71,6 +71,26 @@ export class Auth0Service {
   }
 
   /**
+   * Deletes the user's Auth0 account, so they can no longer sign in. Needs the `delete:users`
+   * scope on the management client. An account that's already gone counts as deleted.
+   */
+  async deleteUser(auth0UserId: string): Promise<void> {
+    const token = await this.getToken();
+    try {
+      await firstValueFrom(
+        this.http.delete(
+          `${process.env.AUTH0_MGMT_URL}/api/v2/users/${encodeURIComponent(auth0UserId)}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        ),
+      );
+    } catch (e: unknown) {
+      if ((e as { response?: { status?: number } }).response?.status === 404)
+        return;
+      throw e;
+    }
+  }
+
+  /**
    * Sets the user's profile picture URL, which Auth0 then hands out in the `picture` claim.
    * Needs the `update:users` scope on the management client.
    */

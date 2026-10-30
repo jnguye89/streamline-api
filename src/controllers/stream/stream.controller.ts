@@ -8,8 +8,11 @@ import {
   NotFoundException,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
 
+import { OptionalJwtAuthGuard } from 'src/auth/optional-jwt-auth.guard';
+import { OptionalUser } from 'src/auth/optional-user.decorator';
 import { Public } from 'src/auth/public.decorator';
 import { User } from 'src/auth/user.decorator';
 import { MultistreamStatusDto } from 'src/dto/multistream.dto';
@@ -18,6 +21,7 @@ import { AgoraStream } from 'src/entity/agora-stream.entity';
 import { Stream } from 'src/entity/stream.entity';
 import { StreamPlatform } from 'src/enums/stream-platform.enum';
 import { AgoraStreamRepository } from 'src/repositories/agora-stream.repository';
+import { ModerationRepository } from 'src/repositories/moderation.repository';
 import { MultistreamService } from 'src/services/multistream.service';
 import { StreamService } from 'src/services/stream.service';
 import { AgoraRecordingService } from 'src/services/third-party/agora/agora-recording.service';
@@ -36,6 +40,7 @@ export default class StreamController {
     private agoraRecordingService: AgoraRecordingService,
     private userService: UserService,
     private multistreamService: MultistreamService,
+    private moderationRepository: ModerationRepository,
   ) {}
 
   @Get()
@@ -44,10 +49,22 @@ export default class StreamController {
     return await this.streamService.getStreams();
   }
 
+  /** Live streams, minus any from users the viewer blocked or that they reported. */
   @Get('agora')
   @Public()
-  async getAgoraStreams(): Promise<AgoraStream[]> {
-    return await this.agoraStreamRepository.findAll();
+  @UseGuards(OptionalJwtAuthGuard)
+  async getAgoraStreams(
+    @OptionalUser() viewer: UserDto | null,
+  ): Promise<AgoraStream[]> {
+    const [streams, hidden] = await Promise.all([
+      this.agoraStreamRepository.findAll(),
+      this.moderationRepository.hiddenFor(viewer?.userId),
+    ]);
+    return streams.filter(
+      (s) =>
+        !hidden.blockedUserIds.has(s.user.auth0UserId) &&
+        !hidden.reportedChannelNames.has(s.channelName),
+    );
   }
 
   @Post('ensure')

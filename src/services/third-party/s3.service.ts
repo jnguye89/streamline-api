@@ -5,6 +5,7 @@ import {
   ListObjectsV2Command,
   PutObjectCommand,
   GetObjectCommand,
+  DeleteObjectsCommand,
   ObjectCannedACL,
 } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
@@ -71,6 +72,48 @@ export class S3Service {
     );
 
     return `https://${this.bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+  }
+
+  /**
+   * The bucket key for something stored either as a bare key (videos) or as this bucket's
+   * public URL (audio, profile pictures). Null for anything that isn't in this bucket, such
+   * as Auth0's default avatars.
+   */
+  keyFor(pathOrUrl: string | null | undefined): string | null {
+    const value = pathOrUrl?.trim();
+    if (!value) return null;
+    if (!/^https?:\/\//i.test(value)) return value.replace(/^\/+/, '') || null;
+    try {
+      const url = new URL(value);
+      if (
+        url.hostname !==
+        `${this.bucket}.s3.${process.env.AWS_REGION}.amazonaws.com`
+      ) {
+        return null;
+      }
+      return decodeURIComponent(url.pathname.replace(/^\/+/, '')) || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Deletes the given keys, 1,000 per request (S3's limit). Missing keys aren't an error. */
+  async deleteObjects(keys: string[]): Promise<void> {
+    const unique = [...new Set(keys)];
+    for (let i = 0; i < unique.length; i += 1000) {
+      const batch = unique.slice(i, i + 1000);
+      const { Errors } = await this.s3.send(
+        new DeleteObjectsCommand({
+          Bucket: this.bucket,
+          Delete: { Objects: batch.map((Key) => ({ Key })), Quiet: true },
+        }),
+      );
+      if (Errors?.length) {
+        throw new Error(
+          `S3 couldn't delete ${Errors.length} object(s), e.g. ${Errors[0].Key}: ${Errors[0].Code} ${Errors[0].Message}`,
+        );
+      }
+    }
   }
 
   async listFiles(prefix = 'uploads'): Promise<string[]> {

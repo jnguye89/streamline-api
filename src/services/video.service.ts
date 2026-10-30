@@ -1,4 +1,11 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
+import { isAdmin } from 'src/auth/admin';
+import { ModerationRepository } from 'src/repositories/moderation.repository';
 import { S3Service } from './third-party/s3.service';
 import { VideoRepository } from 'src/repositories/video.repository';
 import { VideoProgressRepository } from 'src/repositories/video-progress.repository';
@@ -55,7 +62,8 @@ export class VideoService implements OnModuleInit {
     private videoLikeRepository: VideoLikeRepository,
     private videoFeedRepository: VideoFeedRepository,
     private youtubeVideoCacheRepository: YoutubeVideoCacheRepository,
-  ) { }
+    private moderationRepository: ModerationRepository,
+  ) {}
 
   async onModuleInit(): Promise<void> {
     const ids = await this.videoRepository.findAllIds();
@@ -72,14 +80,27 @@ export class VideoService implements OnModuleInit {
   ): Promise<VideoDto[]> {
     const cappedLimit = Math.min(Math.max(limit, 1), MAX_FEED_LIMIT);
 
-    const cachedYoutubeVideos = await this.youtubeVideoCacheRepository.getCached();
-    const youtubeSlots = Math.min(Math.round(cappedLimit * YOUTUBE_SHARE_RATIO), cachedYoutubeVideos.length);
+    const cachedYoutubeVideos =
+      await this.youtubeVideoCacheRepository.getCached();
+    const youtubeSlots = Math.min(
+      Math.round(cappedLimit * YOUTUBE_SHARE_RATIO),
+      cachedYoutubeVideos.length,
+    );
     const s3Slots = cappedLimit - youtubeSlots;
 
     const ids = userId
       ? await this.videoFeedRepository.popRandomUnseen(userId, s3Slots)
       : await this.videoFeedRepository.popRandom(s3Slots);
-    const videos = await this.videoRepository.findByIds(ids);
+    // Leave out what this viewer blocked or reported. The page can come back a little short.
+    const [found, hidden] = await Promise.all([
+      this.videoRepository.findByIds(ids),
+      this.moderationRepository.hiddenFor(userId),
+    ]);
+    const videos = found.filter(
+      (video) =>
+        !hidden.blockedUserIds.has(video.user) &&
+        !hidden.reportedVideoIds.has(video.id as number),
+    );
 
     const progressByVideoId = new Map<number, number>();
     let likedVideoIds = new Set<number>();
@@ -99,11 +120,19 @@ export class VideoService implements OnModuleInit {
       videos.map(async (video) => {
         const resumeTimestamp = progressByVideoId.get(video.id as number) ?? 0;
         const liked = likedVideoIds.has(video.id as number);
-        return { ...(await this.attachSignedUrls(video)), source: 'S3', resumeTimestamp, liked } as VideoDto;
+        return {
+          ...(await this.attachSignedUrls(video)),
+          source: 'S3',
+          resumeTimestamp,
+          liked,
+        } as VideoDto;
       }),
     );
 
-    const youtubeVideos = sampleWithoutReplacement(cachedYoutubeVideos, youtubeSlots).map(toYoutubeVideoDto);
+    const youtubeVideos = sampleWithoutReplacement(
+      cachedYoutubeVideos,
+      youtubeSlots,
+    ).map(toYoutubeVideoDto);
 
     return shuffle([...s3Videos, ...youtubeVideos]);
   }
@@ -129,7 +158,8 @@ export class VideoService implements OnModuleInit {
         this.videoProgressRepository.findByUserAndVideoIds(userId, [id]),
         this.videoLikeRepository.findLikedVideoIds(userId, [id]),
       ]);
-      resumeTimestamp = progress.find((entry) => entry.videoId === id)?.timestamp ?? 0;
+      resumeTimestamp =
+        progress.find((entry) => entry.videoId === id)?.timestamp ?? 0;
       liked = likedIds.includes(id);
     }
 
@@ -209,8 +239,17 @@ export class VideoService implements OnModuleInit {
     return { ...video, videoPath, processedPath } as VideoDto;
   }
 
+  /** Deletes a video for its owner, or for an admin. */
+  async deleteOwnVideo(id: number, userId: string): Promise<void> {
+    const [video] = await this.videoRepository.findByIds([id]);
+    if (!video) throw new NotFoundException('Video not found');
+    if (video.user !== userId && !isAdmin(userId)) {
+      throw new ForbiddenException('Only the owner can delete this video');
+    }
+    await this.deleteVideo(id);
+  }
+
   async deleteVideo(id: number): Promise<void> {
-    console.log(id);
     await this.videoRepository.softDelete(id);
     await this.videoFeedRepository.removeVideo(id);
   }
