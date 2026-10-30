@@ -6,7 +6,7 @@ const unseenKey = (userId: string) => `videos:unseen:${userId}`;
 
 @Injectable()
 export class VideoFeedRepository {
-  constructor(@Inject('REDIS_CLIENT') private readonly redis: Redis) { }
+  constructor(@Inject('REDIS_CLIENT') private readonly redis: Redis) {}
 
   async seedMasterSet(ids: number[]): Promise<void> {
     if (ids.length === 0) return;
@@ -19,6 +19,11 @@ export class VideoFeedRepository {
 
   async removeVideo(id: number): Promise<void> {
     await this.redis.srem(MASTER_SET_KEY, String(id));
+  }
+
+  /** Drops what the feed remembers about a user (which videos they haven't seen yet). */
+  async forgetUser(userId: string): Promise<void> {
+    await this.redis.del(unseenKey(userId));
   }
 
   /** Random, non-repeating (until exhausted) sample for a known user. */

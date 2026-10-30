@@ -44,6 +44,12 @@ import { Thread } from './entity/thread.entity';
 import { User } from './entity/user.entity';
 import { UserRepository } from './repositories/user.repository';
 import { UserService } from './services/user.service';
+import { AccountDeletionService } from './services/account-deletion.service';
+import { ModerationService } from './services/moderation.service';
+import { ModerationRepository } from './repositories/moderation.repository';
+import { ModerationController } from './controllers/moderation.controller';
+import { Report } from './entity/report.entity';
+import { UserBlock } from './entity/user-block.entity';
 import { Auth0Service } from './services/third-party/auth0.service';
 import { DeviceAuthService } from './services/device-auth.service';
 import { DeviceAuthController } from './controllers/device-auth/device-auth.controller';
@@ -152,6 +158,8 @@ import { AgoraMediaPushService } from './services/third-party/agora/agora-media-
       YoutubeChannel,
       ChessGame,
       Multistream,
+      Report,
+      UserBlock,
     ]),
   ],
   controllers: [
@@ -168,6 +176,7 @@ import { AgoraMediaPushService } from './services/third-party/agora/agora-media-
     ElevenLabsController,
     YoutubeChannelController,
     ChessController,
+    ModerationController,
   ],
   providers: [
     RedisClientService,
@@ -203,6 +212,9 @@ import { AgoraMediaPushService } from './services/third-party/agora/agora-media-
     ThreadRepository,
     UserRepository,
     UserService,
+    AccountDeletionService,
+    ModerationService,
+    ModerationRepository,
     Auth0Service,
     LogService,
     AgoraTokenService,

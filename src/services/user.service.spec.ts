@@ -1,7 +1,12 @@
-import { BadGatewayException, BadRequestException } from '@nestjs/common';
+import {
+  BadGatewayException,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
 import { Auth0UserDto } from 'src/dto/auth0-user.dto';
+import { ModerationRepository } from 'src/repositories/moderation.repository';
 import { UserRepository } from 'src/repositories/user.repository';
 import { Auth0Service } from './third-party/auth0.service';
 import { S3Service } from './third-party/s3.service';
@@ -28,6 +33,7 @@ describe('UserService', () => {
         { provide: UserRepository, useValue: userRepo },
         { provide: Auth0Service, useValue: auth0Service },
         { provide: S3Service, useValue: {} },
+        { provide: ModerationRepository, useValue: {} },
       ],
     }).compile();
     const service = module.get(UserService);
@@ -67,6 +73,7 @@ describe('UserService', () => {
           { provide: UserRepository, useValue: userRepo },
           { provide: Auth0Service, useValue: auth0Service },
           { provide: S3Service, useValue: s3Service },
+          { provide: ModerationRepository, useValue: {} },
         ],
       }).compile();
       return {
@@ -151,6 +158,7 @@ describe('UserService', () => {
         { provide: UserRepository, useValue: userRepo },
         { provide: Auth0Service, useValue: auth0Service },
         { provide: S3Service, useValue: {} },
+        { provide: ModerationRepository, useValue: {} },
       ],
     }).compile();
 
@@ -158,5 +166,47 @@ describe('UserService', () => {
 
     expect(auth0Service.getUser).toHaveBeenCalledWith(auth0UserId);
     expect(user.picture).toBe(picture);
+  });
+  describe('deleted accounts', () => {
+    const deletedUser = {
+      auth0UserId,
+      username: 'Deleted user',
+      picture: null,
+      deletedAt: new Date('2026-10-01'),
+      // Long past the daily resync, which must not run for a deleted account.
+      lastSyncedAt: new Date('2026-01-01'),
+    };
+
+    async function setup() {
+      const auth0Service = { getUser: jest.fn() };
+      const module = await Test.createTestingModule({
+        providers: [
+          UserService,
+          {
+            provide: UserRepository,
+            useValue: { getUser: jest.fn().mockResolvedValue(deletedUser) },
+          },
+          { provide: Auth0Service, useValue: auth0Service },
+          { provide: S3Service, useValue: {} },
+          { provide: ModerationRepository, useValue: {} },
+        ],
+      }).compile();
+      return { service: module.get(UserService), auth0Service };
+    }
+
+    it('are not resynced from Auth0, where they no longer exist', async () => {
+      const { service, auth0Service } = await setup();
+
+      await expect(service.getUser(auth0UserId)).resolves.toBe(deletedUser);
+      expect(auth0Service.getUser).not.toHaveBeenCalled();
+    });
+
+    it('read as not found when someone looks up their profile', async () => {
+      const { service } = await setup();
+
+      await expect(service.getAuth0User(auth0UserId)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
   });
 });

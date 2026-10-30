@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 
 import { Auth0UserDto } from 'src/dto/auth0-user.dto';
+import { ModerationRepository } from 'src/repositories/moderation.repository';
 import { UserRepository } from 'src/repositories/user.repository';
 import { Auth0Service } from './third-party/auth0.service';
 import { S3Service } from './third-party/s3.service';
@@ -26,12 +27,16 @@ export class UserService {
     private readonly userRepo: UserRepository,
     private readonly auth0Service: Auth0Service,
     private readonly s3Service: S3Service,
+    private readonly moderationRepository: ModerationRepository,
   ) {}
 
   async getUser(auth0UserId: string): Promise<Auth0UserDto> {
     let user = await this.userRepo.getUser(auth0UserId);
     if (!user) {
       user = await this.createUser(auth0UserId);
+    } else if (user.deletedAt) {
+      // Already anonymized, and gone from Auth0, so there's nothing to resync.
+      return user;
     } else if (
       !user.lastSyncedAt ||
       user.lastSyncedAt <
@@ -79,8 +84,13 @@ export class UserService {
     return await this.userRepo.getUsers();
   }
 
+  /** A profile to show. Deleted accounts read as not found, like they never existed. */
   async getAuth0User(auth0Id: string): Promise<Auth0UserDto> {
-    return this.getUser(auth0Id);
+    const user = await this.getUser(auth0Id);
+    if (user.deletedAt) {
+      throw new NotFoundException('User not found');
+    }
+    return user;
   }
 
   async findAuth0User(auth0Id: string): Promise<Auth0UserDto | null> {
@@ -95,10 +105,27 @@ export class UserService {
     return user;
   }
 
+  /** Matching users, minus anyone the viewer has blocked. */
   async searchUsers(
     query: string,
+    viewerId?: string | null,
   ): Promise<{ username: string; auth0UserId: string }[]> {
-    return this.userRepo.searchByUsername(query);
+    const [users, hidden] = await Promise.all([
+      this.userRepo.searchByUsername(query),
+      this.moderationRepository.hiddenFor(viewerId),
+    ]);
+    return users.filter((u) => !hidden.blockedUserIds.has(u.auth0UserId));
+  }
+
+  /** The signed-in user's own record, created on first use like any other lookup. */
+  getMe(auth0UserId: string): Promise<Auth0UserDto> {
+    return this.getUser(auth0UserId);
+  }
+
+  async acceptTerms(auth0UserId: string): Promise<Auth0UserDto> {
+    await this.getUser(auth0UserId);
+    await this.userRepo.acceptTerms(auth0UserId);
+    return this.getUser(auth0UserId);
   }
 
   /**

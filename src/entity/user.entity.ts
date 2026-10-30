@@ -21,6 +21,17 @@ export class User {
     @Column({ name: "last_synced_at", type: "timestamp", nullable: true })
     lastSyncedAt!: Date;
 
+    /**
+     * When the account was deleted. The row stays, renamed "Deleted user" with no picture,
+     * because other people's chess games still point at it; everything else of theirs is gone.
+     */
+    @Column({ name: "deleted_at", type: "timestamp", nullable: true })
+    deletedAt!: Date | null;
+
+    /** When they agreed to the terms of use, which the apps ask for before someone first posts. */
+    @Column({ name: "terms_accepted_at", type: "timestamp", nullable: true })
+    termsAcceptedAt!: Date | null;
+
     @OneToMany(() => Thread, (t) => t.user)
     threads!: Thread[];
 

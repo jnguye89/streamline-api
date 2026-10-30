@@ -23,8 +23,8 @@ import { IvsService } from 'src/services/third-party/ivs.services';
 export class VideoController {
   constructor(
     private videoService: VideoService,
-    private ivsService: IvsService
-  ) { }
+    private ivsService: IvsService,
+  ) {}
 
   @Get()
   @Public()
@@ -33,7 +33,10 @@ export class VideoController {
     @OptionalUser() user: UserModel | null,
     @Query('limit') limit?: string,
   ): Promise<VideoDto[]> {
-    return await this.videoService.getAllVideos(user?.userId, limit ? Number(limit) : undefined);
+    return await this.videoService.getAllVideos(
+      user?.userId,
+      limit ? Number(limit) : undefined,
+    );
   }
 
   @Get('continue-watching')
@@ -91,8 +94,13 @@ export class VideoController {
 
   @Delete(':id')
   @HttpCode(204)
-  async deleteVideo(@Param('id') id: string): Promise<void> {
-    await this.videoService.deleteVideo(Number(id));
+  async deleteVideo(
+    @User() user: UserModel,
+    @Param('id') id: string,
+  ): Promise<void> {
+    const videoId = this.parseVideoId(id);
+    if (videoId === null) throw new NotFoundException('Video not found');
+    await this.videoService.deleteOwnVideo(videoId, user.userId);
   }
 
   @Post(':id/progress')
@@ -104,7 +112,7 @@ export class VideoController {
   ): Promise<void> {
     const videoId = this.parseVideoId(id);
     if (videoId === null) {
-      return
+      return;
     }
     await this.videoService.saveProgress(user.userId, videoId, body.timestamp);
   }
@@ -115,7 +123,7 @@ export class VideoController {
   async recordView(@Param('id') id: string): Promise<void> {
     const videoId = this.parseVideoId(id);
     if (videoId === null) {
-      return
+      return;
     }
     await this.videoService.recordView(videoId);
   }
@@ -130,7 +138,7 @@ export class VideoController {
   ): Promise<void> {
     const videoId = this.parseVideoId(id);
     if (videoId === null) {
-      return
+      return;
     }
     await this.videoService.recordLike(videoId, user?.userId);
   }
@@ -151,7 +159,7 @@ export class VideoController {
     const result = await this.videoService.generateUploadUrl(
       body.fileName,
       body.mimeType,
-      'videos/original'
+      'videos/original',
     );
     return result; // returns { uploadUrl, key }
   }
