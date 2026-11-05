@@ -1,9 +1,18 @@
 import {
   BadGatewayException,
   BadRequestException,
+  ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+
+import {
+  ageOn,
+  MIN_ACCOUNT_AGE,
+  MIN_GO_LIVE_AGE,
+  parseBirthDate,
+} from 'src/auth/age';
 
 import { Auth0UserDto } from 'src/dto/auth0-user.dto';
 import { ModerationRepository } from 'src/repositories/moderation.repository';
@@ -20,6 +29,21 @@ export const PROFILE_PICTURE_TYPES = [
   'image/heif',
 ];
 export const PROFILE_PICTURE_MAX_BYTES = 5 * 1024 * 1024;
+
+/** What anyone can see about a user: their name and photo (and the id calls use). */
+export type PublicProfile = Pick<
+  Auth0UserDto,
+  'auth0UserId' | 'username' | 'picture' | 'agoraUserId'
+>;
+
+export function toPublicProfile(user: Auth0UserDto): PublicProfile {
+  return {
+    auth0UserId: user.auth0UserId,
+    username: user.username,
+    picture: user.picture ?? null,
+    agoraUserId: user.agoraUserId,
+  };
+}
 
 @Injectable()
 export class UserService {
@@ -120,6 +144,54 @@ export class UserService {
   /** The signed-in user's own record, created on first use like any other lookup. */
   getMe(auth0UserId: string): Promise<Auth0UserDto> {
     return this.getUser(auth0UserId);
+  }
+
+  /**
+   * Records their date of birth (YYYY-MM-DD) and returns their age. It's set once: changing
+   * it afterwards would let someone talk their way past the go-live age, so that goes through
+   * support. Saying the same date again is fine. Under-13s aren't stored; the caller removes
+   * their account.
+   */
+  async setBirthDate(auth0UserId: string, input: unknown): Promise<number> {
+    if (!parseBirthDate(input)) {
+      throw new BadRequestException(
+        'birthDate must be a real date as YYYY-MM-DD',
+      );
+    }
+    const birthDate = (input as string).trim();
+    const age = ageOn(birthDate);
+    if (age < 0 || age > 120) {
+      throw new BadRequestException('That birth date isn’t plausible');
+    }
+    const user = await this.getUser(auth0UserId);
+    if (user.birthDate && user.birthDate !== birthDate) {
+      throw new ConflictException(
+        'Birth date is already set; contact support to change it',
+      );
+    }
+    if (age >= MIN_ACCOUNT_AGE && !user.birthDate) {
+      await this.userRepo.setBirthDate(auth0UserId, birthDate);
+    }
+    return age;
+  }
+
+  /** Throws unless they're old enough to broadcast. `code` tells the apps which message to show. */
+  async assertCanGoLive(auth0UserId: string): Promise<void> {
+    const { birthDate } = await this.getUser(auth0UserId);
+    if (!birthDate) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: 'birthdate_required',
+        message: 'Add your date of birth before going live',
+      });
+    }
+    if (ageOn(birthDate) < MIN_GO_LIVE_AGE) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: 'too_young_to_go_live',
+        message: `You need to be ${MIN_GO_LIVE_AGE} or older to go live`,
+      });
+    }
   }
 
   async acceptTerms(auth0UserId: string): Promise<Auth0UserDto> {

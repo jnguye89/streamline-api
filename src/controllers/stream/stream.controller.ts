@@ -73,6 +73,7 @@ export default class StreamController {
     @Body() dto: { channelName: string },
   ) {
     const channelName = this.requireChannelName(dto?.channelName);
+    await this.userService.assertCanGoLive(user.userId);
     let userSearch = await this.userService.findAuth0User(user.userId);
     if (!userSearch?.auth0UserId) {
       userSearch = await this.userService.createLocalUser(
@@ -108,6 +109,7 @@ export default class StreamController {
     @Body() dto: { channelName: string; multistream?: StreamPlatform[] },
   ): Promise<{ ok: true; multistream: MultistreamStatusDto[] }> {
     const channelName = this.requireChannelName(dto?.channelName);
+    await this.userService.assertCanGoLive(user.userId);
     const platforms = this.multistreamService.parsePlatforms(dto?.multistream);
     const stream =
       await this.agoraStreamRepository.findByChannelName(channelName);

@@ -1,12 +1,13 @@
-import { Controller, Delete, Get, HttpCode, Param, Post, Query, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, Param, Post, Query, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
+import { MIN_ACCOUNT_AGE } from "src/auth/age";
 import { OptionalJwtAuthGuard } from "src/auth/optional-jwt-auth.guard";
 import { OptionalUser } from "src/auth/optional-user.decorator";
 import { Public } from "src/auth/public.decorator";
 import { User } from "src/auth/user.decorator";
 import { UserModel } from "src/models/user.model";
 import { AccountDeletionService } from "src/services/account-deletion.service";
-import { PROFILE_PICTURE_MAX_BYTES, UserService } from "src/services/user.service";
+import { PROFILE_PICTURE_MAX_BYTES, toPublicProfile, UserService } from "src/services/user.service";
 
 @Controller('user')
 export class UserController {
@@ -17,17 +18,24 @@ export class UserController {
 
     @Get()
     async getUsers() {
-        return this.userService.getUsers();
+        return (await this.userService.getUsers()).map(toPublicProfile);
     }
 
+    /**
+     * A user's profile. Public, as the privacy policy says usernames and photos are; anyone
+     * else gets only those, while you get your own full record (birth date, terms, ...).
+     */
     @Get('auth0/:authId')
-    async getAuth0User(@Param('authId') id: string) {
-        return this.userService.getAuth0User(id)
+    @Public()
+    @UseGuards(OptionalJwtAuthGuard)
+    async getAuth0User(@OptionalUser() viewer: UserModel | null, @Param('authId') id: string) {
+        const user = await this.userService.getAuth0User(id);
+        return viewer?.userId === id ? user : toPublicProfile(user);
     }
 
     @Get('agora/:agoraId')
     async getAgoraUser(@Param('agoraId') id: number) {
-        return this.userService.getAgoraUser(id);
+        return toPublicProfile(await this.userService.getAgoraUser(id));
     }
 
     /**
@@ -47,6 +55,24 @@ export class UserController {
     /** The signed-in user's own record, including whether they've agreed to the terms. */
     @Get('me')
     async getMe(@User() user: UserModel) {
+        return this.userService.getMe(user.userId);
+    }
+
+    /**
+     * Body: { birthDate: "YYYY-MM-DD" }. Under 13 isn't allowed an account: it's deleted on the
+     * spot and the response is 403 with code "underage", so the app can sign them out.
+     */
+    @Post('me/birthdate')
+    async setBirthDate(@User() user: UserModel, @Body() body: { birthDate?: unknown }) {
+        const age = await this.userService.setBirthDate(user.userId, body?.birthDate);
+        if (age < MIN_ACCOUNT_AGE) {
+            await this.accountDeletionService.deleteAccount(user.userId);
+            throw new ForbiddenException({
+                statusCode: 403,
+                code: 'underage',
+                message: 'This account isn’t eligible and has been removed',
+            });
+        }
         return this.userService.getMe(user.userId);
     }
 
