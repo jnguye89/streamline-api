@@ -28,6 +28,13 @@ export class User {
     @Column({ name: "deleted_at", type: "timestamp", nullable: true })
     deletedAt!: Date | null;
 
+    /**
+     * Date of birth (YYYY-MM-DD), asked once after sign-up. Accounts need 13+, and going live
+     * needs 18+. Kept as a date rather than a yes/no so someone can go live once they turn 18.
+     */
+    @Column({ name: "birth_date", type: "date", nullable: true })
+    birthDate!: string | null;
+
     /** When they agreed to the terms of use, which the apps ask for before someone first posts. */
     @Column({ name: "terms_accepted_at", type: "timestamp", nullable: true })
     termsAcceptedAt!: Date | null;

@@ -162,7 +162,13 @@ export class AccountDeletionService {
       await manager.update(
         User,
         { auth0UserId: userId },
-        { username: DELETED_USERNAME, picture: null, deletedAt: new Date() },
+        {
+          username: DELETED_USERNAME,
+          picture: null,
+          birthDate: null,
+          termsAcceptedAt: null,
+          deletedAt: new Date(),
+        },
       );
     }
 

@@ -54,6 +54,10 @@ export class UserRepository {
     return this.userRepo.save(entity);
   }
 
+  async setBirthDate(auth0UserId: string, birthDate: string): Promise<void> {
+    await this.userRepo.update({ auth0UserId }, { birthDate });
+  }
+
   /** Records the first time they agreed to the terms; later agreements don't move it. */
   async acceptTerms(auth0UserId: string): Promise<void> {
     await this.userRepo.update(

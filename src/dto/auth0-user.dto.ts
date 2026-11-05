@@ -6,4 +6,5 @@ export class Auth0UserDto {
     agoraUserId?: number;
     deletedAt?: Date | null;
     termsAcceptedAt?: Date | null;
+    birthDate?: string | null;
 }

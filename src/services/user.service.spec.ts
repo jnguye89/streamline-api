@@ -1,6 +1,8 @@
 import {
   BadGatewayException,
   BadRequestException,
+  ConflictException,
+  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -207,6 +209,108 @@ describe('UserService', () => {
       await expect(service.getAuth0User(auth0UserId)).rejects.toBeInstanceOf(
         NotFoundException,
       );
+    });
+  });
+  describe('ages', () => {
+    const now = new Date();
+    const yearsAgo = (years: number, days = 0) => {
+      const d = new Date(
+        Date.UTC(
+          now.getUTCFullYear() - years,
+          now.getUTCMonth(),
+          now.getUTCDate() - days,
+        ),
+      );
+      return d.toISOString().slice(0, 10);
+    };
+
+    async function setup(user: Partial<Auth0UserDto>) {
+      const userRepo = {
+        getUser: jest.fn().mockResolvedValue({
+          auth0UserId,
+          username: 'u',
+          lastSyncedAt: now,
+          picture: 'p',
+          ...user,
+        }),
+        setBirthDate: jest.fn().mockResolvedValue(undefined),
+      };
+      const module = await Test.createTestingModule({
+        providers: [
+          UserService,
+          { provide: UserRepository, useValue: userRepo },
+          { provide: Auth0Service, useValue: {} },
+          { provide: S3Service, useValue: {} },
+          { provide: ModerationRepository, useValue: {} },
+        ],
+      }).compile();
+      return { service: module.get(UserService), userRepo };
+    }
+
+    it('stores a birth date once and returns the age', async () => {
+      const { service, userRepo } = await setup({ birthDate: null });
+
+      await expect(
+        service.setBirthDate(auth0UserId, yearsAgo(20)),
+      ).resolves.toBe(20);
+      expect(userRepo.setBirthDate).toHaveBeenCalledWith(
+        auth0UserId,
+        yearsAgo(20),
+      );
+    });
+
+    it('doesn’t store an under-13 birth date (the account is removed instead)', async () => {
+      const { service, userRepo } = await setup({ birthDate: null });
+
+      await expect(
+        service.setBirthDate(auth0UserId, yearsAgo(12)),
+      ).resolves.toBe(12);
+      expect(userRepo.setBirthDate).not.toHaveBeenCalled();
+    });
+
+    it('refuses to change a birth date once set, but accepts the same one', async () => {
+      const { service } = await setup({ birthDate: yearsAgo(16) });
+
+      await expect(
+        service.setBirthDate(auth0UserId, yearsAgo(16)),
+      ).resolves.toBe(16);
+      await expect(
+        service.setBirthDate(auth0UserId, yearsAgo(19)),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('rejects dates that aren’t real or plausible', async () => {
+      const { service } = await setup({ birthDate: null });
+
+      await expect(
+        service.setBirthDate(auth0UserId, '2001-02-30'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      await expect(
+        service.setBirthDate(auth0UserId, yearsAgo(-1)),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('lets 18+ go live, and says why when it won’t', async () => {
+      await expect(
+        (await setup({ birthDate: yearsAgo(18) })).service.assertCanGoLive(
+          auth0UserId,
+        ),
+      ).resolves.toBeUndefined();
+
+      const tooYoung = (
+        await setup({ birthDate: yearsAgo(18, -1) })
+      ).service.assertCanGoLive(auth0UserId);
+      await expect(tooYoung).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(tooYoung).rejects.toMatchObject({
+        response: { code: 'too_young_to_go_live' },
+      });
+
+      const unknown = (
+        await setup({ birthDate: null })
+      ).service.assertCanGoLive(auth0UserId);
+      await expect(unknown).rejects.toMatchObject({
+        response: { code: 'birthdate_required' },
+      });
     });
   });
 });
