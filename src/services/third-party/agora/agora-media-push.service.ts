@@ -11,8 +11,10 @@ export interface CreateConverterOptions {
   /** Converter name: up to 64 chars, unique per Agora project. */
   name: string;
   channelName: string;
-  /** Agora UID of the host whose audio/video is pushed. */
+  /** Agora UID of the host, shown first (left). */
   hostUid: number;
+  /** Podcast guests already in the channel, tiled beside the host. */
+  guestUids?: number[];
   /** Full RTMP destination, including the stream key. */
   rtmpUrl: string;
   region: string;
@@ -23,6 +25,55 @@ export interface MediaPushConverter {
   state?: string;
   createTs?: number;
   updateTs?: number;
+}
+
+/** Most people a restream tiles: the host and four podcast guests. */
+export const MAX_LAYOUT_PEOPLE = 5;
+
+export interface LayoutRegion {
+  rtcStreamUid: number;
+  region: {
+    xPos: number;
+    yPos: number;
+    zIndex: number;
+    width: number;
+    height: number;
+  };
+  fillMode: 'fit' | 'fill';
+}
+
+/**
+ * Tiles people side by side on the canvas, host first: one fills it, two or
+ * three share one row, four or five take two rows (the top one fuller).
+ * Alone, the host is letterboxed rather than cropped (screen and console
+ * captures aren't always 16:9 and cropping would cut off game HUDs); in a
+ * podcast, cameras fill their tiles so there are no bars between people.
+ */
+export function sideBySideLayout(
+  uids: number[],
+  width: number,
+  height: number,
+): LayoutRegion[] {
+  const people = uids.slice(0, MAX_LAYOUT_PEOPLE);
+  const rows =
+    people.length <= 3 ? [people] : [people.slice(0, 3), people.slice(3)];
+  const rowHeight = Math.floor(height / rows.length);
+  const fillMode = people.length > 1 ? 'fill' : 'fit';
+  return rows.flatMap((row, r) => {
+    const tileWidth = Math.floor(width / row.length);
+    return row.map((rtcStreamUid, c) => ({
+      rtcStreamUid,
+      region: {
+        xPos: c * tileWidth,
+        yPos: r * rowHeight,
+        zIndex: 1,
+        // The last tile in a row and the last row take any leftover pixels.
+        width: c === row.length - 1 ? width - c * tileWidth : tileWidth,
+        height: r === rows.length - 1 ? height - r * rowHeight : rowHeight,
+      },
+      fillMode,
+    }));
+  });
 }
 
 interface AgoraErrorResponse {
@@ -97,19 +148,17 @@ export class AgoraMediaPushService {
             sampleRate: 48000,
             bitrate: this.audioBitrate,
             audioChannels: 2,
-            rtcStreamUids: [options.hostUid],
+            // No rtcStreamUids: Agora then mixes everyone publishing in the
+            // channel. Audio can't be changed once the converter runs, so
+            // this is what lets podcast guests who join later be heard.
           },
           videoOptions: {
             canvas: { width, height },
-            layout: [
-              {
-                rtcStreamUid: options.hostUid,
-                region: { xPos: 0, yPos: 0, zIndex: 1, width, height },
-                // Letterbox rather than crop: screen/console captures aren't
-                // always 16:9 and cropping would cut off game HUDs.
-                fillMode: 'fit',
-              },
-            ],
+            layout: sideBySideLayout(
+              [options.hostUid, ...(options.guestUids ?? [])],
+              width,
+              height,
+            ),
             codec: 'H.264',
             codecProfile: 'high',
             frameRate,
@@ -138,6 +187,40 @@ export class AgoraMediaPushService {
     } catch (error: unknown) {
       throw new Error(
         `Agora Media Push create failed: ${this.describeError(error)}`,
+      );
+    }
+  }
+
+  /**
+   * Re-tiles a running converter for the people now on screen. `sequence`
+   * must grow with every update to the same converter: Agora applies the
+   * highest one it has seen, so late or retried requests can't win.
+   */
+  async updateLayout(
+    converterId: string,
+    region: string,
+    uids: number[],
+    sequence: number,
+  ): Promise<void> {
+    const { width, height } = this;
+    try {
+      await firstValueFrom(
+        this.http.patch(
+          `${this.convertersUrl(region)}/${encodeURIComponent(converterId)}`,
+          {
+            converter: {
+              transcodeOptions: {
+                videoOptions: { layout: sideBySideLayout(uids, width, height) },
+              },
+            },
+            fields: 'transcodeOptions.videoOptions.layout',
+          },
+          { headers: this.headers(), params: { sequence } },
+        ),
+      );
+    } catch (error: unknown) {
+      throw new Error(
+        `Agora Media Push update failed: ${this.describeError(error)}`,
       );
     }
   }

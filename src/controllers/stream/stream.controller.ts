@@ -25,6 +25,7 @@ import { ModerationRepository } from 'src/repositories/moderation.repository';
 import { MultistreamService } from 'src/services/multistream.service';
 import { StreamService } from 'src/services/stream.service';
 import { AgoraRecordingService } from 'src/services/third-party/agora/agora-recording.service';
+import { MAX_LAYOUT_PEOPLE } from 'src/services/third-party/agora/agora-media-push.service';
 import { AgoraTokenService } from 'src/services/third-party/agora/agora-token.service';
 import { UserService } from 'src/services/user.service';
 
@@ -106,11 +107,18 @@ export default class StreamController {
   @Put('publish')
   async publishStream(
     @User() user: UserDto,
-    @Body() dto: { channelName: string; multistream?: StreamPlatform[] },
+    @Body()
+    dto: {
+      channelName: string;
+      multistream?: StreamPlatform[];
+      /** Podcast guests already on the call, tiled beside the host. */
+      guestUids?: number[];
+    },
   ): Promise<{ ok: true; multistream: MultistreamStatusDto[] }> {
     const channelName = this.requireChannelName(dto?.channelName);
     await this.userService.assertCanGoLive(user.userId);
     const platforms = this.multistreamService.parsePlatforms(dto?.multistream);
+    const guestUids = this.parseGuestUids(dto?.guestUids);
     const stream =
       await this.agoraStreamRepository.findByChannelName(channelName);
     if (!stream) {
@@ -132,8 +140,37 @@ export default class StreamController {
       user.userId,
       stream.user.agoraUserId,
       platforms,
+      guestUids.filter((uid) => uid !== stream.user.agoraUserId),
     );
     return { ok: true, multistream };
+  }
+
+  /**
+   * Who's on screen in the host's restreams: the host, then these podcast
+   * guests side by side in this order. Sent by the host whenever a guest
+   * joins or leaves while live.
+   */
+  @Put('layout')
+  @HttpCode(204)
+  async updateLayout(
+    @User() user: UserDto,
+    @Body() dto: { channelName: string; guestUids?: number[] },
+  ): Promise<void> {
+    const channelName = this.requireChannelName(dto?.channelName);
+    const guestUids = this.parseGuestUids(dto?.guestUids);
+    const stream =
+      await this.agoraStreamRepository.findByChannelName(channelName);
+    if (!stream) {
+      throw new NotFoundException('Stream not found');
+    }
+    if (stream.user.auth0UserId !== user.userId) {
+      throw new ForbiddenException('Stream belongs to another user');
+    }
+    const hostUid = stream.user.agoraUserId;
+    await this.multistreamService.updateLayout(channelName, [
+      hostUid,
+      ...guestUids.filter((uid) => uid !== hostUid),
+    ]);
   }
 
   @Post('heartbeat')
@@ -182,6 +219,24 @@ export default class StreamController {
     }
     await this.agoraRecordingService.processVideo(dto.fileName);
     return { ok: true };
+  }
+
+  /** Distinct positive Agora uids, at most as many guests as a layout holds. */
+  private parseGuestUids(input: unknown): number[] {
+    if (input === undefined || input === null) return [];
+    if (
+      !Array.isArray(input) ||
+      !input.every((uid) => Number.isInteger(uid) && (uid as number) > 0)
+    ) {
+      throw new BadRequestException('guestUids must be an array of user ids');
+    }
+    const uids = [...new Set(input as number[])];
+    if (uids.length > MAX_LAYOUT_PEOPLE - 1) {
+      throw new BadRequestException(
+        `A stream can show at most ${MAX_LAYOUT_PEOPLE - 1} guests`,
+      );
+    }
+    return uids;
   }
 
   private requireChannelName(channelName: string | undefined): string {
