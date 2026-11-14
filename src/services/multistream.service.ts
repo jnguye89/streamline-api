@@ -60,6 +60,9 @@ export class MultistreamService {
     process.env.YOUTUBE_INGEST_URL || 'rtmp://a.rtmp.youtube.com/live2'
   ).replace(/\/+$/, '');
 
+  /** Last layout sequence sent per multistream id (see updateLayout). */
+  private readonly layoutSequences = new Map<number, number>();
+
   constructor(
     private multistreamRepository: MultistreamRepository,
     private streamKeyRepository: StreamKeyRepository,
@@ -97,6 +100,7 @@ export class MultistreamService {
     userId: string,
     hostUid: number,
     platforms: StreamPlatform[],
+    guestUids: number[] = [],
   ): Promise<MultistreamStatusDto[]> {
     // A previous go-live on this channel whose stop never reached Agora
     // would otherwise keep pushing alongside the new converter.
@@ -122,11 +126,62 @@ export class MultistreamService {
           channelName,
           userId,
           hostUid,
+          guestUids,
           platform,
           keys.find((key) => key.platform === platform),
         ),
       ),
     );
+  }
+
+  /**
+   * Re-tiles every running restream of the channel for who's on screen now:
+   * the host, then podcast guests in the order they joined. Never throws - a
+   * layout that didn't update is no reason to fail the host's request.
+   */
+  async updateLayout(channelName: string, uids: number[]): Promise<void> {
+    let multistreams: Multistream[];
+    try {
+      multistreams =
+        await this.multistreamRepository.findActiveByChannelName(channelName);
+    } catch (error: unknown) {
+      this.logger.error(
+        `Could not load multistreams for ${channelName}: ${this.message(error)}`,
+      );
+      return;
+    }
+    await Promise.all(
+      multistreams
+        .filter((m) => m.converterId)
+        .map(async (multistream) => {
+          try {
+            await this.mediaPush.updateLayout(
+              multistream.converterId!,
+              multistream.region,
+              uids,
+              this.nextLayoutSequence(multistream),
+            );
+          } catch (error: unknown) {
+            this.logger.error(
+              `Could not update ${multistream.platform} layout for ${channelName}: ${this.message(error)}`,
+            );
+          }
+        }),
+    );
+  }
+
+  /**
+   * Agora wants a growing sequence per converter. Tenths of a second since
+   * the restream started keep growing across API restarts (and stay well
+   * inside 32 bits for years); the map breaks ties within the same tenth.
+   */
+  private nextLayoutSequence(multistream: Multistream): number {
+    const startedAt = multistream.createdAt?.getTime() ?? Date.now();
+    const elapsed = Math.max(0, Math.floor((Date.now() - startedAt) / 100));
+    const last = this.layoutSequences.get(multistream.id) ?? -1;
+    const next = Math.max(elapsed, last + 1);
+    this.layoutSequences.set(multistream.id, next);
+    return next;
   }
 
   /** Stops every restream of the channel. Never throws. */
@@ -153,6 +208,7 @@ export class MultistreamService {
           }
           multistream.status = 'stopped';
           await this.multistreamRepository.save(multistream);
+          this.layoutSequences.delete(multistream.id);
         } catch (error: unknown) {
           // Left active so the next stopAll() on this channel retries it;
           // Agora's idle timeout reaps the converter once the host leaves.
@@ -168,6 +224,7 @@ export class MultistreamService {
     channelName: string,
     userId: string,
     hostUid: number,
+    guestUids: number[],
     platform: StreamPlatform,
     streamKey: StreamKey | undefined,
   ): Promise<MultistreamStatusDto> {
@@ -204,6 +261,7 @@ export class MultistreamService {
         name: this.converterName(channelName, platform),
         channelName,
         hostUid,
+        guestUids,
         rtmpUrl: `${ingestUrl}/${key}`,
         region: multistream.region,
       });

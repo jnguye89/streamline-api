@@ -24,6 +24,7 @@ describe('MultistreamService', () => {
     region: string;
     createConverter: jest.Mock;
     deleteConverter: jest.Mock;
+    updateLayout: jest.Mock;
   };
   let service: MultistreamService;
 
@@ -57,6 +58,7 @@ describe('MultistreamService', () => {
       region: 'na',
       createConverter: jest.fn().mockResolvedValue({ id: 'converter-1' }),
       deleteConverter: jest.fn().mockResolvedValue(undefined),
+      updateLayout: jest.fn().mockResolvedValue(undefined),
     };
 
     const module = await Test.createTestingModule({
@@ -369,5 +371,61 @@ describe('MultistreamService', () => {
 
     expect(mediaPush.deleteConverter).toHaveBeenCalledWith('converter-1', 'na');
     expect(rows.map((row) => row.status)).toEqual(['stopped', 'active']);
+  });
+
+  it('starts restreams with podcast guests already on the call', async () => {
+    await service.start(
+      channelName,
+      userId,
+      hostUid,
+      [StreamPlatform.TWITCH],
+      [7, 9],
+    );
+
+    expect(mediaPush.createConverter).toHaveBeenCalledWith(
+      expect.objectContaining({ hostUid, guestUids: [7, 9] }),
+    );
+  });
+
+  describe('updateLayout', () => {
+    it('re-tiles every running restream with a growing sequence', async () => {
+      await service.start(channelName, userId, hostUid, [
+        StreamPlatform.TWITCH,
+      ]);
+
+      await service.updateLayout(channelName, [hostUid, 7]);
+      await service.updateLayout(channelName, [hostUid]);
+
+      expect(mediaPush.updateLayout).toHaveBeenNthCalledWith(
+        1,
+        'converter-1',
+        'na',
+        [hostUid, 7],
+        expect.any(Number),
+      );
+      const calls = mediaPush.updateLayout.mock.calls as [
+        string,
+        string,
+        number[],
+        number,
+      ][];
+      const [first, second] = calls.map((call) => call[3]);
+      expect(second).toBeGreaterThan(first);
+    });
+
+    it('skips stopped restreams and never throws', async () => {
+      await service.start(channelName, userId, hostUid, [
+        StreamPlatform.TWITCH,
+      ]);
+      mediaPush.updateLayout.mockRejectedValueOnce(new Error('HTTP 429'));
+      await expect(
+        service.updateLayout(channelName, [hostUid, 7]),
+      ).resolves.toBeUndefined();
+
+      await service.stopAll(channelName);
+      mediaPush.updateLayout.mockClear();
+      await service.updateLayout(channelName, [hostUid]);
+      expect(mediaPush.updateLayout).not.toHaveBeenCalled();
+    });
   });
 });

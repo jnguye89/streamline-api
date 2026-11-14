@@ -11,8 +11,11 @@ export class AgoraStreamRepository {
   ) {}
 
   async findAll(): Promise<AgoraStream[]> {
+    // Query builders skip eager relations, so the owner has to be joined by hand: the
+    // controller filters on it (blocked users) and clients show who's live.
     return this.agoraStreamRepo
       .createQueryBuilder('s')
+      .innerJoinAndSelect('s.user', 'user')
       .where('s.status = :status', { status: 'live' })
       .andWhere('s.lastHeartbeatAt >= (UTC_TIMESTAMP() - INTERVAL 15 SECOND)')
       .orderBy('s.lastHeartbeatAt', 'DESC')
