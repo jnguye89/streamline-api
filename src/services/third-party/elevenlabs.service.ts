@@ -25,6 +25,26 @@ export class ElevenLabsService {
         return response.data.signed_url;
     }
 
+    /**
+     * A WebRTC conversation token for the agent. The mobile SDK only supports WebRTC
+     * (the web uses the WebSocket signed URL above).
+     */
+    async getConvaiConversationToken(agentId: string): Promise<string> {
+        if (!this.apiKey) {
+            throw new Error('Missing ELEVENLABS_API_KEY environment variable');
+        }
+
+        const response = await axios.get<{ token: string }>(
+            `https://api.elevenlabs.io/v1/convai/conversation/token`,
+            {
+                params: { agent_id: agentId },
+                headers: { 'xi-api-key': this.apiKey },
+            },
+        );
+
+        return response.data.token;
+    }
+
     async isolateAudio(
         inputAudioPath: string,
         outputAudioPath: string,

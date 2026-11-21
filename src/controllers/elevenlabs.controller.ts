@@ -17,4 +17,16 @@ export class ElevenLabsController {
     const signedUrl = await this.elevenLabsService.getConvaiSignedUrl(agentId);
     return { signedUrl };
   }
+
+  /** WebRTC conversation token for the mobile app's Yap (its SDK has no WebSocket mode). */
+  @Get('token')
+  @Public()
+  async getToken(): Promise<{ token: string }> {
+    const agentId = process.env.ELEVENLABS_AGENT_ID;
+    if (!agentId) {
+      throw new Error('Missing ELEVENLABS_AGENT_ID environment variable');
+    }
+    const token = await this.elevenLabsService.getConvaiConversationToken(agentId);
+    return { token };
+  }
 }
