@@ -27,6 +27,14 @@ export class StreamKey {
   @Column({ length: 2083, nullable: true })
   streamUrl?: string;
 
+  /**
+   * Whether the next live also goes out on this platform. Switched from the
+   * TV's Simulcast dialog, the TV live page and the phone's go-live screen,
+   * so every device shows the same choice. Saving a key switches it on.
+   */
+  @Column({ type: 'boolean', default: true })
+  enabled!: boolean;
+
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   createdAt!: Date;
 

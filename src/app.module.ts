@@ -18,6 +18,8 @@ import { VideoLikeRepository } from './repositories/video-like.repository';
 import { StreamKeyRepository } from './repositories/stream-key.repository';
 import { StreamKeyService } from './services/stream-key.service';
 import { StreamKeyController } from './controllers/stream-key.controller';
+import { StreamKeyLinkController } from './controllers/stream-key-link.controller';
+import { StreamKeyLinkService } from './services/stream-key-link.service';
 import { Video } from './entity/video.entity';
 import { VideoProgress } from './entity/video-progress.entity';
 import { VideoLike } from './entity/video-like.entity';
@@ -169,6 +171,7 @@ import { AgoraMediaPushService } from './services/third-party/agora/agora-media-
     ListenController,
     UserIntegrationController,
     StreamKeyController,
+    StreamKeyLinkController,
     ThreadController,
     CallController,
     UserController,
@@ -199,6 +202,7 @@ import { AgoraMediaPushService } from './services/third-party/agora/agora-media-
     VideoLikeRepository,
     StreamKeyRepository,
     StreamKeyService,
+    StreamKeyLinkService,
     StreamRepository,
     AgoraStreamRepository,
     IvsService,
